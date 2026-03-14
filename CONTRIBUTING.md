@@ -37,7 +37,19 @@ The documentation UI is built with React and Tailwind CSS in [packages/docs-serv
 - To develop locally: `npm run dev -w @socketdocs/docs-server`.
 - We welcome improvements to the **Playground**, **Schema Visualization**, and **Theming**.
 
-### 6. Development Setup
+### 6. Mock Server and Validation
+We aim to provide robust tooling for developers. 
+- **Mock Server**: The mock server implementation is currently a placeholder in `packages/cli/src/index.ts`. We are looking for contributions to implement real data generation using libraries like `faker.js` based on the JSON schemas in the spec.
+- **Spec Validation**: The `wsdoc.json` spec is validated against a formal JSON Schema found in [packages/core/wsdoc.schema.json](packages/core/wsdoc.schema.json). If you change the spec format, you **must** update this schema.
+
+### 7. Pull Request Guidelines
+To ensure a smooth review process, please follow these guidelines:
+- **Branch Naming**: Use descriptive names like `feat/add-rust-sdk`, `fix/socketio-auth`, or `docs/update-readme`.
+- **Atomic Commits**: Keep your commits focused and descriptive.
+- **Tests**: Include unit tests for any new features or bug fixes.
+- **Documentation**: Update the relevant README or this guide if your changes introduce new patterns.
+
+### 8. Development Setup
 SocketDocs is a **Lerna-style monorepo** managed with npm workspaces.
 
 - Fork and clone the repository.
@@ -45,7 +57,7 @@ SocketDocs is a **Lerna-style monorepo** managed with npm workspaces.
 - Use `npm run build` to compile all packages (this is required before running tests or the CLI).
 - Run `npm test` to run the test suite across all packages.
 
-### 7. Code Style
+### 9. Code Style
 - We use ESLint and Prettier for code consistency.
 - Please ensure your code passes the linting check before submitting a PR.
 
