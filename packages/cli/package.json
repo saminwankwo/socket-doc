@@ -1,6 +1,7 @@
 {
   "name": "@socketdocs/cli",
   "version": "0.1.0",
+  "author": "Nwankwo Samuel",
   "bin": {
     "socketdocs": "dist/index.js"
   },

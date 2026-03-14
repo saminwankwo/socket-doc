@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "OpenAPI-style documentation framework for WebSocket APIs",
+  "author": "Nwankwo Samuel",
   "workspaces": [
     "packages/*",
     "examples/*"
