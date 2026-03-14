@@ -9,7 +9,8 @@ export interface SocketioAdapterOptions {
 export function bindSocketioAdapter({ contract, io }: SocketioAdapterOptions) {
   // Bind namespaces from the contract to Socket.IO
   for (const [nsName, ns] of contract._namespaces) {
-    const socketioNs = nsName === "default" || nsName === "/" ? io : io.of(nsName)
+    const isServer = "of" in io
+    const socketioNs = nsName === "default" || nsName === "/" ? io : (isServer ? (io as Server).of(nsName) : io)
 
     socketioNs.on("connection", (socket: Socket) => {
       // For each event in the contract namespace
