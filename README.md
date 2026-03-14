@@ -121,4 +121,4 @@ npx socketdocs generate-sdk --lang py -o ./sdk/client.py
 
 ## License
 
-MIT - Author: Samuel
+MIT © [Nwankwo Samuel](https://github.com/saminwankwo)
