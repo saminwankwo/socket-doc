@@ -13,7 +13,7 @@ import { SdkGenerator } from "./generators"
 
 const program = new Command()
 const ajv = new Ajv()
-addFormats(ajv)
+addFormats(ajv as any)
 
 program
   .name("socketdocs")

@@ -35,7 +35,18 @@ chat.event({
 })
 
 // Bind the adapter
-const adapter = bindSocketioAdapter({ contract, io })
+const adapter = bindSocketioAdapter(io, contract, {
+  chat: {
+    send_message: async ({ payload, socket }: any) => {
+      console.log("Valid message received via handler:", payload)
+      // Broadcast the message back to all clients in the namespace
+      adapter.emit(io.of("chat"), "chat", "new_message", {
+        ...payload,
+        timestamp: Date.now()
+      })
+    }
+  }
+})
 
 // Register a simple logging plugin
 contract.registerPlugin({
@@ -48,17 +59,6 @@ contract.registerPlugin({
 
 io.on("connection", (socket) => {
   console.log("Client connected")
-
-  socket.on("send_message", (payload) => {
-    // Payload is already validated by the adapter!
-    console.log("Valid message received:", payload)
-
-    // Broadcast the message back to all clients in the namespace
-    adapter.emit(io.of("chat"), "chat", "new_message", {
-      ...payload,
-      timestamp: Date.now()
-    })
-  })
 })
 
 httpServer.listen(3000, () => {

@@ -1,9 +1,9 @@
-import { Module, DynamicModule, Global, Inject, OnModuleInit, Type } from '@nestjs/common';
+import 'reflect-metadata';
+import { Module, DynamicModule, Global, Inject, OnModuleInit } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
-import { SubscribeMessage, WebSocketGateway, OnGatewayConnection } from '@nestjs/websockets';
+import { SubscribeMessage } from '@nestjs/websockets';
 import { Contract, createValidator } from '@socketdocs/core';
 
-// --- Decorators ---
 
 export const SOCKETDOCS_NAMESPACE = 'socketdocs:namespace';
 export const SOCKETDOCS_EVENT = 'socketdocs:event';
