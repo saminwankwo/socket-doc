@@ -1,35 +1,57 @@
-import {createServer} from "http"
-import {Server} from "socket.io"
-import {createContract} from "@socketdocs/core"
-import {z} from "zod"
+import { createServer } from "http"
+import { Server } from "socket.io"
+import { createContract } from "@socketdocs/core"
+import { bindSocketioAdapter } from "@socketdocs/socket-io"
+import { z } from "zod"
 
 const httpServer = createServer()
 const io = new Server(httpServer)
 
 const contract = createContract({
- name:"realtime-api",
- version:"1.0.0"
+  name: "chat-api",
+  version: "1.0.0",
+  description: "A simple chat API"
 })
 
 const chat = contract.namespace("chat")
 
 chat.event({
- name:"send_message",
- direction:"client_to_server",
- payload:z.object({
-  message:z.string(),
-  userId:z.string()
- })
+  name: "send_message",
+  direction: "client_to_server",
+  payload: z.object({
+    message: z.string(),
+    userId: z.string()
+  })
 })
 
-io.on("connection",(socket)=>{
-
- socket.on("send_message",(payload)=>{
-
-  console.log("message received",payload)
-
- })
-
+chat.event({
+  name: "new_message",
+  direction: "server_to_client",
+  payload: z.object({
+    message: z.string(),
+    userId: z.string(),
+    timestamp: z.number()
+  })
 })
 
-httpServer.listen(3000)
+// Bind the adapter
+const adapter = bindSocketioAdapter({ contract, io })
+
+io.on("connection", (socket) => {
+  console.log("Client connected")
+
+  socket.on("send_message", (payload) => {
+    // Payload is already validated by the adapter!
+    console.log("Valid message received:", payload)
+
+    // Broadcast the message back to all clients in the namespace
+    adapter.emit(io.of("chat"), "chat", "new_message", {
+      ...payload,
+      timestamp: Date.now()
+    })
+  })
+})
+
+httpServer.listen(3000, () => {
+  console.log("Server listening on port 3000")
+})
