@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from "ws"
-import { Contract } from "@socketdocs/core"
+import { Contract, createValidator } from "@socketdocs/core"
 
 export interface WsAdapterOptions {
   onAuth?: (socket: WebSocket, request: any) => Promise<{ userId?: string; roles?: string[] } | null>
@@ -30,21 +30,20 @@ export function bindWsAdapter(wss: WebSocketServer, contract: Contract, handlers
         if (!eventDef) return
 
         if (eventDef.direction === "client_to_server" || eventDef.direction === "bidirectional") {
+          const validator = createValidator(eventDef)
           // Validation
-          if (eventDef.payload) {
-            const result = eventDef.payload.safeParse(payload)
-            if (!result.success) {
-              console.error(`[SocketDocs] Validation failed for event "${eventName}":`, result.error.errors)
-              socket.send(JSON.stringify({
-                type: "error",
-                id: messageId,
-                message: "Validation failed",
-                details: result.error.errors
-              }))
-              return
-            }
-            payload = result.data
+          const result = validator.validate(payload)
+          if (!result.success) {
+            console.error(`[SocketDocs] Validation failed for event "${eventName}":`, result.error)
+            socket.send(JSON.stringify({
+              type: "error",
+              id: messageId,
+              message: "Validation failed",
+              details: result.error
+            }))
+            return
           }
+          payload = result.data
 
           // Auth check
           if (eventDef.authRequired && !authCtx) {

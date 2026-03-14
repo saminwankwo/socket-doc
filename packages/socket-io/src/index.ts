@@ -1,5 +1,5 @@
 import { Server, Socket, Namespace as SocketioNamespace } from "socket.io"
-import { Contract } from "@socketdocs/core"
+import { Contract, createValidator } from "@socketdocs/core"
 
 export interface SocketioAdapterOptions {
   onAuth?: (socket: Socket) => Promise<{ userId?: string; roles?: string[] } | null>
@@ -26,17 +26,16 @@ export function bindSocketioAdapter(io: Server | SocketioNamespace, contract: Co
       // For each event in the contract namespace
       for (const [eventName, eventDef] of ns.events) {
         if (eventDef.direction === "client_to_server" || eventDef.direction === "bidirectional") {
+          const validator = createValidator(eventDef)
+
           socket.on(eventName, async (payload: any, ack?: any) => {
-            // Validate payload if schema exists
-            if (eventDef.payload) {
-              const result = eventDef.payload.safeParse(payload)
-              if (!result.success) {
-                console.error(`[SocketDocs] Validation failed for event "${eventName}":`, result.error.errors)
-                return ack?.({ status: "error", code: 400, message: "Invalid payload", details: result.error.errors })
-              }
-              // Replace payload with parsed data (handles defaults, transformations)
-              payload = result.data
+            // Validate payload
+            const result = validator.validate(payload)
+            if (!result.success) {
+              console.error(`[SocketDocs] Validation failed for event "${eventName}":`, result.error)
+              return ack?.({ status: "error", code: 400, message: "Invalid payload", details: result.error })
             }
+            payload = result.data
 
             // Auth check
             if (eventDef.authRequired && !authCtx) {

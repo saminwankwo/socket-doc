@@ -14,6 +14,8 @@ export interface EventDefinition<P extends ZodTypeAny = any, R extends ZodTypeAn
   description?: string;
   payload?: P;
   response?: R;
+  payloadSchema?: any;
+  responseSchema?: any;
   roles?: string[];
   authRequired?: boolean;
   examples?: any[];
@@ -104,8 +106,8 @@ export function createContract(options: ContractOptions) {
           type: def.type ?? "fire_and_forget",
           summary: def.summary,
           description: def.description,
-          payloadSchema: def.payload ? zodToJsonSchema(def.payload) : null,
-          responseSchema: def.response ? zodToJsonSchema(def.response) : null,
+          payloadSchema: def.payloadSchema || (def.payload ? zodToJsonSchema(def.payload) : null),
+          responseSchema: def.responseSchema || (def.response ? zodToJsonSchema(def.response) : null),
           roles: def.roles ?? [],
           authRequired: !!def.authRequired,
           examples: def.examples ?? [],
