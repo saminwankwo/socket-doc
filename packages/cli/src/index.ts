@@ -3,8 +3,17 @@ import fs from "fs"
 import path from "path"
 import http from "http"
 import { Command } from "commander"
+import Ajv from "ajv"
+import addFormats from "ajv-formats"
+import { TypescriptGenerator } from "./generators/typescript"
+import { GoGenerator } from "./generators/go"
+import { PythonGenerator } from "./generators/python"
+import { PhpGenerator } from "./generators/php"
+import { SdkGenerator } from "./generators"
 
 const program = new Command()
+const ajv = new Ajv()
+addFormats(ajv)
 
 program
   .name("socketdocs")
@@ -113,8 +122,17 @@ program
 
     const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
     const server = http.createServer((req, res) => {
+      // CORS
+      res.setHeader("Access-Control-Allow-Origin", "*")
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type")
+      
+      if (req.method === "OPTIONS") {
+        res.end()
+        return
+      }
+
       if (req.url === "/api/spec") {
-        res.setHeader("Access-Control-Allow-Origin", "*")
         res.setHeader("Content-Type", "application/json")
         res.end(JSON.stringify(spec, null, 2))
         return
@@ -123,51 +141,139 @@ program
       res.setHeader("Content-Type", "text/html")
       res.end(`
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>SocketDocs - ${spec.info.name}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SocketDocs Explorer - ${spec.info.name}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 40px; background: #f8f9fa; color: #212529; }
-    .card { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 30px; border: 1px solid #e9ecef; }
-    h1 { color: #007bff; font-size: 2.5rem; margin-bottom: 10px; }
-    h2 { border-bottom: 2px solid #e9ecef; padding-bottom: 10px; margin-top: 0; color: #343a40; }
-    .namespace { margin-bottom: 50px; }
-    .event { border-left: 5px solid #007bff; padding: 20px; margin-bottom: 25px; background: #fff; border-radius: 0 8px 8px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-    .direction { font-weight: bold; font-size: 0.75rem; text-transform: uppercase; color: #6c757d; margin-bottom: 5px; letter-spacing: 0.05em; }
-    .type { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; background: #e7f1ff; color: #007bff; margin-left: 10px; vertical-align: middle; }
-    pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 0.9rem; }
-    .auth-badge { background: #ffc107; color: #000; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; margin-left: 10px; }
-    .role-badge { background: #6c757d; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 5px; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    pre, code { font-family: 'JetBrains Mono', monospace; }
   </style>
 </head>
-<body>
-  <div class="header card">
-    <h1>SocketDocs: ${spec.info.name}</h1>
-    <div style="color: #6c757d;">Version: ${spec.info.version}</div>
-    <p>${spec.info.description || "No description provided."}</p>
-  </div>
-  
-  <div id="content">
-    ${Object.entries(spec.namespaces).map(([name, ns]: [string, any]) => `
-      <div class="namespace">
-        <h2>Namespace: ${name}</h2>
-        ${Object.entries(ns.events).map(([eventName, event]: [string, any]) => `
-          <div class="event card">
-            <div class="direction">
-              ${event.direction.replace(/_/g, " ")}
-              <span class="type">${event.type.replace(/_/g, " ")}</span>
-              ${event.authRequired ? '<span class="auth-badge">AUTH REQUIRED</span>' : ""}
-              ${(event.roles || []).map((r: string) => `<span class="role-badge">${r}</span>`).join("")}
-            </div>
-            <h3 style="margin-top: 5px; margin-bottom: 10px;">${eventName}</h3>
-            <p style="color: #495057;">${event.summary || event.description || "No description."}</p>
-            ${event.payloadSchema ? `<h4>Payload Schema</h4><pre>${JSON.stringify(event.payloadSchema, null, 2)}</pre>` : ""}
-            ${event.responseSchema ? `<h4>Response Schema</h4><pre>${JSON.stringify(event.responseSchema, null, 2)}</pre>` : ""}
+<body class="bg-slate-950 text-slate-200">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-72 border-r border-slate-800 bg-slate-900/50 backdrop-blur-xl sticky top-0 h-screen overflow-y-auto">
+      <div class="p-6">
+        <div class="flex items-center gap-3 mb-10">
+          <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
           </div>
+          <h1 class="font-bold text-xl tracking-tight text-white">SocketDocs</h1>
+        </div>
+
+        <div class="space-y-8">
+          ${Object.entries(spec.namespaces).map(([name, ns]: [string, any]) => `
+            <div>
+              <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 px-2">Namespace: ${name}</h2>
+              <div class="space-y-1">
+                ${Object.keys(ns.events).map(evtName => `
+                  <a href="#${name}-${evtName}" class="block px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all truncate">
+                    ${evtName}
+                  </a>
+                `).join("")}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 p-12 max-w-5xl mx-auto overflow-x-hidden">
+      <header className="mb-16">
+        <div className="flex items-center gap-3 mb-4">
+          <span class="px-2 py-1 bg-blue-600/10 text-blue-400 text-xs font-mono font-bold rounded border border-blue-500/20">v${spec.info.version}</span>
+          <span class="text-slate-600">/</span>
+          <span class="text-slate-400 font-mono text-xs">spec v${spec.specVersion}</span>
+        </div>
+        <h1 class="text-5xl font-extrabold text-white mb-6 tracking-tight">${spec.info.name}</h1>
+        <p class="text-xl text-slate-400 leading-relaxed max-w-3xl">${spec.info.description || "No description provided."}</p>
+      </header>
+
+      <div class="space-y-24">
+        ${Object.entries(spec.namespaces).map(([nsName, ns]: [string, any]) => `
+          <section id="ns-${nsName}">
+            <div class="flex items-center gap-4 mb-10 pb-4 border-b border-slate-800">
+              <h2 class="text-2xl font-bold text-white uppercase tracking-tight">${nsName}</h2>
+              <span class="text-slate-500 text-sm">Namespace</span>
+            </div>
+            
+            <div class="grid gap-10">
+              ${Object.entries(ns.events).map(([evtName, event]: [string, any]) => `
+                <div id="${nsName}-${evtName}" class="group relative bg-slate-900/30 border border-slate-800 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all duration-300 shadow-xl shadow-black/20">
+                  <div class="p-8">
+                    <div class="flex items-start justify-between mb-6">
+                      <div>
+                        <div class="flex items-center gap-3 mb-3">
+                          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
+                            event.direction === 'client_to_server' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                            event.direction === 'server_to_client' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                            'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                          }">
+                            ${event.direction.replace(/_/g, " ")}
+                          </span>
+                          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-slate-800 text-slate-400 border border-slate-700">
+                            ${event.type.replace(/_/g, " ")}
+                          </span>
+                          ${event.authRequired ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-amber-500/10 text-amber-400 border border-amber-500/20">AUTH</span>' : ""}
+                        </div>
+                        <h3 class="text-2xl font-bold text-white tracking-tight">${evtName}</h3>
+                      </div>
+                      <a href="#${nsName}-${evtName}" class="p-2 text-slate-600 hover:text-blue-400 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                      </a>
+                    </div>
+                    
+                    <p class="text-slate-400 text-lg mb-8">${event.summary || event.description || "No description provided."}</p>
+
+                    <div class="grid lg:grid-cols-2 gap-8">
+                      ${event.payloadSchema ? `
+                        <div class="space-y-3">
+                          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Payload Schema</h4>
+                          <div class="relative group">
+                            <pre class="rounded-xl overflow-hidden text-xs"><code class="language-json">${JSON.stringify(event.payloadSchema, null, 2)}</code></pre>
+                            <button onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText)" class="absolute top-3 right-3 p-2 bg-slate-800 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:text-white">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                      ` : ""}
+                      ${event.responseSchema ? `
+                        <div class="space-y-3">
+                          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Response Schema</h4>
+                          <div class="relative group">
+                            <pre class="rounded-xl overflow-hidden text-xs"><code class="language-json">${JSON.stringify(event.responseSchema, null, 2)}</code></pre>
+                            <button onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText)" class="absolute top-3 right-3 p-2 bg-slate-800 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:text-white">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                      ` : ""}
+                    </div>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </section>
         `).join("")}
       </div>
-    `).join("")}
+
+      <footer class="mt-32 pt-12 border-t border-slate-800 text-slate-600 text-sm flex items-center justify-between">
+        <p>&copy; 2024 SocketDocs. Built for senior-grade WebSocket development.</p>
+        <div class="flex items-center gap-6">
+          <a href="#" class="hover:text-blue-400 transition-colors">Documentation</a>
+          <a href="#" class="hover:text-blue-400 transition-colors">GitHub</a>
+        </div>
+      </footer>
+    </main>
   </div>
+  <script>hljs.highlightAll();</script>
 </body>
 </html>
       `)
@@ -193,117 +299,26 @@ program
 
     const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
     
-    if (options.lang === "ts" || options.lang === "js") {
-      let sdkCode = `// Generated by SocketDocs SDK Generator v${spec.specVersion}\n\n`
-      sdkCode += `export class SocketDocsClient {\n`
-      sdkCode += `  constructor(private socket: any) {}\n\n`
-
-      for (const nsName in spec.namespaces) {
-        const ns = spec.namespaces[nsName]
-        sdkCode += `  // Namespace: ${nsName}\n`
-        for (const eventName in ns.events) {
-          const event = ns.events[eventName]
-          if (event.direction === "client_to_server" || event.direction === "bidirectional") {
-            const isRequestResponse = event.type === "request_response"
-            
-            sdkCode += `  ${eventName}(payload: any): ${isRequestResponse ? 'Promise<any>' : 'void'} {\n`
-            if (isRequestResponse) {
-              sdkCode += `    return new Promise((resolve, reject) => {\n`
-              sdkCode += `      this.socket.emit("${eventName}", payload, (response: any) => {\n`
-              sdkCode += `        if (response && response.status === "error") reject(response);\n`
-              sdkCode += `        else resolve(response);\n`
-              sdkCode += `      });\n`
-              sdkCode += `    });\n`
-            } else {
-              sdkCode += `    this.socket.emit("${eventName}", payload);\n`
-            }
-            sdkCode += `  }\n`
-          }
-        }
-        sdkCode += `\n`
-      }
-      sdkCode += `}\n`
-
-      const ext = options.lang === "ts" ? ".ts" : ".js"
-      const outputPath = options.output.endsWith(ext) ? options.output : options.output + ext
-      fs.writeFileSync(outputPath, sdkCode)
-      console.log(`SDK generated at ${outputPath}`)
-    } else if (options.lang === "go") {
-      let sdkCode = `// Code generated by SocketDocs SDK Generator v${spec.specVersion}. DO NOT EDIT.\n\n`
-      sdkCode += `package socketdocs\n\n`
-      sdkCode += `import (\n\t"encoding/json"\n\t"fmt"\n)\n\n`
-      
-      sdkCode += `type Client struct {\n\tconn interface{}\n}\n\n`
-      sdkCode += `func NewClient(conn interface{}) *Client {\n\treturn &Client{conn: conn}\n}\n\n`
-
-      for (const nsName in spec.namespaces) {
-        const ns = spec.namespaces[nsName]
-        for (const eventName in ns.events) {
-          const event = ns.events[eventName]
-          if (event.direction === "client_to_server" || event.direction === "bidirectional") {
-            const capitalized = eventName.charAt(0).toUpperCase() + eventName.slice(1)
-            sdkCode += `func (c *Client) ${capitalized}(payload interface{}) error {\n`
-            sdkCode += `\tfmt.Printf("Emitting ${eventName}: %v\\n", payload)\n`
-            sdkCode += `\treturn nil\n`
-            sdkCode += `}\n\n`
-          }
-        }
-      }
-      
-      const outputPath = options.output.endsWith(".go") ? options.output : options.output + ".go"
-      fs.writeFileSync(outputPath, sdkCode)
-      console.log(`Go SDK generated at ${outputPath}`)
-    } else if (options.lang === "py") {
-      let sdkCode = `# Generated by SocketDocs SDK Generator v${spec.specVersion}\n\n`
-      sdkCode += `class SocketDocsClient:\n`
-      sdkCode += `    def __init__(self, socket):\n`
-      sdkCode += `        self.socket = socket\n\n`
-
-      for (const nsName in spec.namespaces) {
-        const ns = spec.namespaces[nsName]
-        for (const eventName in ns.events) {
-          const event = ns.events[eventName]
-          if (event.direction === "client_to_server" || event.direction === "bidirectional") {
-            sdkCode += `    def ${eventName}(self, payload):\n`
-            sdkCode += `        print(f"Emitting ${eventName}: {payload}")\n`
-            sdkCode += `        self.socket.emit("${eventName}", payload)\n\n`
-          }
-        }
-      }
-
-      const outputPath = options.output.endsWith(".py") ? options.output : options.output + ".py"
-      fs.writeFileSync(outputPath, sdkCode)
-      console.log(`Python SDK generated at ${outputPath}`)
-    } else if (options.lang === "php") {
-      let sdkCode = `<?php\n\n// Generated by SocketDocs SDK Generator v${spec.specVersion}\n\n`
-      sdkCode += `namespace SocketDocs;\n\n`
-      sdkCode += `class SocketDocsClient {\n`
-      sdkCode += `    private $socket;\n\n`
-      sdkCode += `    public function __construct($socket) {\n`
-      sdkCode += `        $this->socket = $socket;\n`
-      sdkCode += `    }\n\n`
-
-      for (const nsName in spec.namespaces) {
-        const ns = spec.namespaces[nsName]
-        sdkCode += `    // Namespace: ${nsName}\n`
-        for (const eventName in ns.events) {
-          const event = ns.events[eventName]
-          if (event.direction === "client_to_server" || event.direction === "bidirectional") {
-            sdkCode += `    public function ${eventName}($payload) {\n`
-            sdkCode += `        echo "Emitting ${eventName}: " . json_encode($payload) . PHP_EOL;\n`
-            sdkCode += `        $this->socket->emit("${eventName}", $payload);\n`
-            sdkCode += `    }\n\n`
-          }
-        }
-      }
-      sdkCode += `}\n`
-
-      const outputPath = options.output.endsWith(".php") ? options.output : options.output + ".php"
-      fs.writeFileSync(outputPath, sdkCode)
-      console.log(`PHP SDK generated at ${outputPath}`)
-    } else {
-      console.error(`SDK generation for ${options.lang} is not yet implemented.`)
+    const generators: Record<string, SdkGenerator> = {
+      ts: new TypescriptGenerator('ts'),
+      js: new TypescriptGenerator('js'),
+      go: new GoGenerator(),
+      py: new PythonGenerator(),
+      php: new PhpGenerator()
     }
+
+    const generator = generators[options.lang]
+    if (!generator) {
+      console.error(`SDK generation for ${options.lang} is not yet implemented.`)
+      process.exit(1)
+    }
+
+    const sdkCode = generator.generate(spec)
+    const ext = generator.getFileExtension()
+    const outputPath = options.output.endsWith(ext) ? options.output : options.output + ext
+    
+    fs.writeFileSync(outputPath, sdkCode)
+    console.log(`${options.lang.toUpperCase()} SDK generated at ${outputPath}`)
   })
 
 program
@@ -330,6 +345,27 @@ program
       console.error("Contract validation failed:", err)
       process.exit(1)
     }
+  })
+
+program
+  .command("mock-server")
+  .description("Start a mock WebSocket server based on the spec")
+  .option("-p, --port <number>", "Port to serve on", "5000")
+  .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
+  .action((options) => {
+    const specPath = path.resolve(process.cwd(), options.spec)
+    if (!fs.existsSync(specPath)) {
+      console.error(`Spec file not found at ${specPath}`)
+      process.exit(1)
+    }
+
+    const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
+    console.log(`Starting mock server for ${spec.info.name} on port ${options.port}...`)
+    
+    // In a real implementation, we would use a library like 'mockjs' or similar
+    // to generate random data based on JSON Schema.
+    // For now, we'll just log that it's starting.
+    console.log("Mock server is ready. (Mock data generation placeholder)")
   })
 
 program.parse(process.argv)
