@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { zodToJsonSchema } from "zod-to-json-schema"
+import { PluginManager, SocketDocsPlugin } from "./plugins"
 
 export interface EventDefinition<P extends z.ZodTypeAny = any, R extends z.ZodTypeAny = any> {
   name: string
@@ -9,7 +10,7 @@ export interface EventDefinition<P extends z.ZodTypeAny = any, R extends z.ZodTy
   description?: string
 }
 
-export interface Namespace {
+export interface NamespaceDefinition {
   name: string
   events: Map<string, EventDefinition>
 }
@@ -21,7 +22,20 @@ export interface ContractOptions {
 }
 
 export function createContract(options: ContractOptions) {
-  const namespaces = new Map<string, Namespace>()
+  const namespaces = new Map<string, NamespaceDefinition>()
+
+  const contract = {
+    namespace,
+    generateSpec,
+    _namespaces: namespaces,
+    options,
+    registerPlugin(plugin: SocketDocsPlugin) {
+      this.plugins.register(plugin)
+    },
+    plugins: null as any as PluginManager
+  }
+
+  contract.plugins = new PluginManager(contract as any)
 
   function namespace(name: string) {
     if (!namespaces.has(name)) {
@@ -71,12 +85,7 @@ export function createContract(options: ContractOptions) {
     return spec
   }
 
-  return {
-    namespace,
-    generateSpec,
-    _namespaces: namespaces,
-    options
-  }
+  return contract
 }
 
 export type Contract = ReturnType<typeof createContract>

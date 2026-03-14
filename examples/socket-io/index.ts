@@ -37,6 +37,15 @@ chat.event({
 // Bind the adapter
 const adapter = bindSocketioAdapter({ contract, io })
 
+// Register a simple logging plugin
+contract.registerPlugin({
+  name: "logger",
+  version: "1.0.0",
+  onEvent: (eventName, payload, namespace) => {
+    console.log(`[Plugin:Logger] Event "${eventName}" in namespace "${namespace}"`, payload)
+  }
+})
+
 io.on("connection", (socket) => {
   console.log("Client connected")
 

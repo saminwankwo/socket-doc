@@ -11,7 +11,7 @@ export function bindWsAdapter({ contract, wss }: WsAdapterOptions) {
     socket.on("message", (data: any) => {
       try {
         const message = JSON.parse(data.toString())
-        const { event: eventName, payload, namespace: nsName = "default" } = message
+        let { event: eventName, payload, namespace: nsName = "default" } = message
 
         const ns = contract._namespaces.get(nsName)
         if (!ns) return
@@ -30,10 +30,15 @@ export function bindWsAdapter({ contract, wss }: WsAdapterOptions) {
                 details: result.error.errors
               }))
               return
+              }
+              // Replace payload with parsed data
+              payload = result.data
             }
           }
-        }
-      } catch (err) {
+
+          // Notify plugins
+          contract.plugins.notifyEvent(eventName, payload, nsName)
+        } catch (err) {
         console.error("[SocketDocs] Error parsing message:", err)
       }
     })

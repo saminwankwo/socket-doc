@@ -30,6 +30,9 @@ export function bindSocketioAdapter({ contract, io }: SocketioAdapterOptions) {
               payload = result.data
             }
 
+            // Notify plugins
+            contract.plugins.notifyEvent(eventName, payload, nsName)
+
             // The actual logic should be handled by the user
             // We'll emit a "contract:event" so the user can listen to it if they want
             // but normally the user would just use socket.on as usual.
