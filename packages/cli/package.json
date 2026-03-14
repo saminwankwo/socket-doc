@@ -1,0 +1,10 @@
+{
+  "name": "@socketdocs/cli",
+  "version": "0.1.0",
+  "bin": {
+    "socketdocs": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

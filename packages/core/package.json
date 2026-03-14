@@ -1,22 +1,13 @@
 {
-"name": "@socketdocs/core",
-  "version": "0.0.1",
+  "name": "@socketdocs/core",
+  "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts --dts",
-    "dev": "tsup src/index.ts --watch --dts"
+    "build": "tsc -p tsconfig.json"
   },
-  
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "zod": "^3.22.0",
+    "zod-to-json-schema": "^3.22.3"
   }
 }
