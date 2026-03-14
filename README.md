@@ -10,7 +10,7 @@ SocketDocs allows you to define a single source of truth for your WebSocket even
 - **Framework Agnostic**: Adapters for Socket.IO, standard WebSockets, Fastify, and NestJS.
 - **Unified Validation**: Built-in support for Zod and JSON Schema (AJV).
 - **Interactive Documentation**: Swagger-like UI with a built-in playground to test events.
-- **SDK Generation**: Generate typed clients for TypeScript, Go, and Python.
+- **SDK Generation**: Generate typed clients for TypeScript, Go, Python, and PHP.
 
 ## Installation
 
@@ -117,7 +117,16 @@ npx socketdocs generate-sdk --lang go -o ./sdk/client.go
 
 # Python
 npx socketdocs generate-sdk --lang py -o ./sdk/client.py
+
+# PHP
+npx socketdocs generate-sdk --lang php -o ./sdk/client.php
 ```
+
+## Contributing
+
+We love contributions! Whether it's adding a new adapter, improving the UI, or **adding support for more SDK languages**, your help is welcome.
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed instructions on how to get involved.
 
 ## License
 
