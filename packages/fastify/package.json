@@ -6,7 +6,9 @@
  "scripts": {
    "build": "tsc -p tsconfig.json"
  },
- "dependencies": {
-    "@socketdocs/core": "file:../core"
- }
+  "dependencies": {
+    "@socketdocs/core": "file:../core",
+    "@fastify/websocket": "^8.2.0",
+    "fastify": "^4.24.0"
+  }
 }

@@ -13,9 +13,12 @@
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
   },
   "devDependencies": {
-    "typescript": "^5.3.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "eslint": "^8.50.0",
-    "prettier": "^3.0.0"
+    "jest": "^30.3.0",
+    "prettier": "^3.0.0",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.3.0"
   }
 }
