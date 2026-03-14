@@ -6,7 +6,9 @@
  "scripts": {
    "build": "tsc -p tsconfig.json"
  },
- "dependencies": {
-   "@socketdocs/core": "workspace:*"
- }
+  "dependencies": {
+    "@socketdocs/core": "workspace:*",
+    "socket.io": "^4.7.0",
+    "zod": "^3.22.0"
+  }
 }

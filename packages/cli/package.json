@@ -4,6 +4,10 @@
   "bin": {
     "socketdocs": "dist/index.js"
   },
+  "dependencies": {
+    "@socketdocs/core": "workspace:*",
+    "commander": "^11.0.0"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json"
   }

@@ -1,2 +1,5 @@
 docs
 old
+
+node_modules*
+dist
