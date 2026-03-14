@@ -26,6 +26,7 @@ export function createContract(options: ContractOptions) {
 
   const contract = {
     namespace,
+    registerNamespaceClass,
     generateSpec,
     _namespaces: namespaces,
     options,
@@ -52,6 +53,20 @@ export function createContract(options: ContractOptions) {
         ns.events.set(def.name, def)
         return def
       }
+    }
+  }
+
+  function registerNamespaceClass(target: any) {
+    const nsName = target.__socketdocs_namespace || target.name
+    const ns = namespace(nsName)
+    const events = target.__socketdocs_events || []
+
+    for (const e of events) {
+      ns.event({
+        name: e.name,
+        direction: e.direction,
+        // In a more advanced implementation, we'd extract schemas here
+      })
     }
   }
 

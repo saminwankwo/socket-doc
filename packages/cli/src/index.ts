@@ -84,9 +84,53 @@ program
 
     const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
     const server = http.createServer((req, res) => {
-      res.setHeader("Access-Control-Allow-Origin", "*")
-      res.setHeader("Content-Type", "application/json")
-      res.end(JSON.stringify(spec, null, 2))
+      if (req.url === "/api/spec") {
+        res.setHeader("Access-Control-Allow-Origin", "*")
+        res.setHeader("Content-Type", "application/json")
+        res.end(JSON.stringify(spec, null, 2))
+        return
+      }
+
+      // Serve a simple HTML documentation page
+      res.setHeader("Content-Type", "text/html")
+      res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SocketDocs - \${spec.info.name}</title>
+  <style>
+    body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
+    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    h1 { color: #333; }
+    .namespace { margin-bottom: 40px; }
+    .event { border-left: 4px solid #007bff; padding-left: 15px; margin-bottom: 20px; }
+    .direction { font-weight: bold; font-size: 0.8em; text-transform: uppercase; color: #666; }
+    pre { background: #eee; padding: 10px; border-radius: 4px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>SocketDocs: \${spec.info.name} v\${spec.info.version}</h1>
+  <p>\${spec.info.description || ""}</p>
+  
+  <div id="content">
+    \${Object.entries(spec.namespaces).map(([name, ns]: [string, any]) => \`
+      <div class="namespace card">
+        <h2>Namespace: \${name}</h2>
+        \${Object.entries(ns.events).map(([eventName, event]: [string, any]) => \`
+          <div class="event">
+            <div class="direction">\${event.direction}</div>
+            <h3>\${eventName}</h3>
+            <p>\${event.description || ""}</p>
+            \${event.payloadSchema ? \`<h4>Payload Schema</h4><pre>\${JSON.stringify(event.payloadSchema, null, 2)}</pre>\` : ""}
+            \${event.responseSchema ? \`<h4>Response Schema</h4><pre>\${JSON.stringify(event.responseSchema, null, 2)}</pre>\` : ""}
+          </div>
+        \`).join("")}
+      </div>
+    \`).join("")}
+  </div>
+</body>
+</html>
+      `)
     })
 
     server.listen(options.port, () => {
