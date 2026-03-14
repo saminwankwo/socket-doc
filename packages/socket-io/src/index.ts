@@ -2,42 +2,76 @@ import { Server, Socket, Namespace as SocketioNamespace } from "socket.io"
 import { Contract } from "@socketdocs/core"
 
 export interface SocketioAdapterOptions {
-  contract: Contract
-  io: Server | SocketioNamespace
+  onAuth?: (socket: Socket) => Promise<{ userId?: string; roles?: string[] } | null>
+  logger?: (msg: string) => void
 }
 
-export function bindSocketioAdapter({ contract, io }: SocketioAdapterOptions) {
+export function bindSocketioAdapter(io: Server | SocketioNamespace, contract: Contract, handlers: any, opts?: SocketioAdapterOptions) {
   // Bind namespaces from the contract to Socket.IO
   for (const [nsName, ns] of contract._namespaces) {
     const isServer = "of" in io
     const socketioNs = nsName === "default" || nsName === "/" ? io : (isServer ? (io as Server).of(nsName) : io)
 
-    socketioNs.on("connection", (socket: Socket) => {
+    socketioNs.on("connection", async (socket: Socket) => {
+      let authCtx: any = null
+      if (opts?.onAuth) {
+        try {
+          authCtx = await opts.onAuth(socket)
+        } catch (err) {
+          socket.disconnect(true)
+          return
+        }
+      }
+
       // For each event in the contract namespace
       for (const [eventName, eventDef] of ns.events) {
         if (eventDef.direction === "client_to_server" || eventDef.direction === "bidirectional") {
-          socket.on(eventName, (payload: any, callback?: (response: any) => void) => {
+          socket.on(eventName, async (payload: any, ack?: any) => {
             // Validate payload if schema exists
             if (eventDef.payload) {
               const result = eventDef.payload.safeParse(payload)
               if (!result.success) {
                 console.error(`[SocketDocs] Validation failed for event "${eventName}":`, result.error.errors)
-                if (callback) {
-                  callback({ error: "Validation failed", details: result.error.errors })
-                }
-                return
+                return ack?.({ status: "error", code: 400, message: "Invalid payload", details: result.error.errors })
               }
               // Replace payload with parsed data (handles defaults, transformations)
               payload = result.data
             }
 
+            // Auth check
+            if (eventDef.authRequired && !authCtx) {
+              return ack?.({ status: "error", code: 401, message: "Unauthorized" })
+            }
+            if (eventDef.roles && eventDef.roles.length > 0) {
+              const ok = eventDef.roles.some((r: string) => authCtx?.roles?.includes(r))
+              if (!ok) return ack?.({ status: "error", code: 403, message: "Forbidden" })
+            }
+
             // Notify plugins
             contract.plugins.notifyEvent(eventName, payload, nsName)
 
-            // The actual logic should be handled by the user
-            // We'll emit a "contract:event" so the user can listen to it if they want
-            // but normally the user would just use socket.on as usual.
-            // This adapter primarily adds validation.
+            // Get the handler for this event
+            const handler = handlers?.[nsName]?.[eventName]
+            if (!handler) {
+              // If no handler provided in handlers map, we don't return 404
+              // as the user might be using standard socket.on()
+              return
+            }
+
+            try {
+              const result = await handler({ payload, socket, auth: authCtx })
+              if (eventDef.response) {
+                const rsp = eventDef.response.safeParse(result)
+                if (!rsp.success) {
+                  return ack?.({ status: "error", code: 500, message: "Invalid response shape" })
+                }
+                return ack?.(rsp.data)
+              } else {
+                return ack?.(result)
+              }
+            } catch (err: any) {
+              return ack?.({ status: "error", code: 500, message: err.message || "Internal error" })
+            }
           })
         }
       }
@@ -49,7 +83,7 @@ export function bindSocketioAdapter({ contract, io }: SocketioAdapterOptions) {
     emit: <T = any>(socket: Socket | Server | SocketioNamespace, nsName: string, eventName: string, payload: T) => {
       const ns = contract._namespaces.get(nsName)
       if (!ns) throw new Error(`Namespace ${nsName} not found in contract`)
-      
+
       const eventDef = ns.events.get(eventName)
       if (!eventDef) throw new Error(`Event ${eventName} not found in namespace ${nsName}`)
 
