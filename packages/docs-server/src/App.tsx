@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Layout, Search, Book, Activity, Terminal, Shield, Settings, Play, Send, Power, PowerOff, XCircle, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Book, Activity, Terminal, Shield, Settings, Send, Power, PowerOff, XCircle, CheckCircle2 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 
 interface Spec {
