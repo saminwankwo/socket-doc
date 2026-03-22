@@ -1,14 +1,14 @@
 {
  "name": "@socketdocs/ws",
- "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Nwankwo Samuel",
   "main": "dist/index.js",
- "types": "dist/index.d.ts",
- "scripts": {
-   "build": "tsc -p tsconfig.json"
- },
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "dependencies": {
-    "@socketdocs/core": "^0.1.0",
+    "@socketdocs/core": "^0.1.1",
     "ws": "^8.16.0",
     "zod": "^3.22.0"
   }
