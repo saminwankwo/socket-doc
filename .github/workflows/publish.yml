@@ -1,15 +1,12 @@
 name: Publish
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*.*.*'
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,27 +16,23 @@ jobs:
       - run: npm ci
       - name: Build
         run: npm run build
-      - name: Publish to npm
-        run: |
-          # Use workspaces to publish all non-private packages at once
-          # --if-present is not a standard flag for publish, so we use a simple loop
-          # to check if the version already exists before trying to publish
-          for dir in packages/*; do
-            if [ -d "$dir" ] && [ -f "$dir/package.json" ]; then
-              NAME=$(node -p "require('./$dir/package.json').name")
-              VERSION=$(node -p "require('./$dir/package.json').version")
-              PRIVATE=$(node -p "require('./$dir/package.json').private || false")
-              
-              if [ "$PRIVATE" = "false" ]; then
-                if ! npm view "$NAME@$VERSION" version > /dev/null 2>&1; then
-                  echo "Publishing $NAME@$VERSION..."
-                  cd "$dir" && npm publish --access public --provenance
-                  cd ../..
-                else
-                  echo "$NAME@$VERSION already exists on npm, skipping."
-                fi
-              fi
-            fi
-          done
+      - name: Publish core
+        run: cd packages/core && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish socket-io
+        run: cd packages/socket-io && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish ws
+        run: cd packages/ws && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish fastify
+        run: cd packages/fastify && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish cli
+        run: cd packages/cli && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
