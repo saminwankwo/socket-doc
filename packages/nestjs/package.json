@@ -1,6 +1,6 @@
 {
  "name": "@socketdocs/nestjs",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "Nwankwo Samuel",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@socketdocs/core": "^0.1.1",
+    "@socketdocs/core": "^0.1.2",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/websockets": "^10.0.0",
