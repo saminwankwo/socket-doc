@@ -22,7 +22,8 @@ export function bindFastifyAdapter(fastify: FastifyInstance, contract: Contract,
     connection.socket.on("message", async (data: any) => {
       try {
         const message = JSON.parse(data.toString())
-        let { event: eventName, payload, namespace: nsName = "default", id: messageId } = message
+        const { event: eventName, namespace: nsName = "default", id: messageId } = message
+        let { payload } = message
 
         const ns = contract._namespaces.get(nsName)
         if (!ns) return

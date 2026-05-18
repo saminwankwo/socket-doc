@@ -1,6 +1,6 @@
 {
   "name": "@socketdocs/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Core engine for SocketDocs, providing contract definitions and validation logic.",
   "keywords": [
     "socketdocs",

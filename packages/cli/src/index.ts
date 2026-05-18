@@ -89,9 +89,11 @@ program
       // For this implementation, we require the file. 
       // If it's TS, we assume it's pre-compiled or we use ts-node
       if (contractFilePath.endsWith(".ts")) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         require("ts-node").register()
       }
       
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const mod = require(contractFilePath)
       const contract = mod.contract || mod.default
       
@@ -335,8 +337,10 @@ program
     
     try {
       if (contractFilePath.endsWith(".ts")) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         require("ts-node").register()
       }
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const mod = require(contractFilePath)
       const contract = mod.contract || mod.default
       if (!contract) throw new Error("Contract not found")
