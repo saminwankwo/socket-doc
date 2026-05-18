@@ -1,7 +1,22 @@
 {
   "name": "@socketdocs/core",
   "version": "0.1.2",
+  "description": "Core engine for SocketDocs, providing contract definitions and validation logic.",
+  "keywords": [
+    "socketdocs",
+    "websocket",
+    "validation",
+    "zod",
+    "json-schema",
+    "contract-first"
+  ],
   "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "directory": "packages/core"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

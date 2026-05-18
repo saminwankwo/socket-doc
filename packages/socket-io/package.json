@@ -1,7 +1,21 @@
 {
  "name": "@socketdocs/socket-io",
   "version": "0.1.2",
+  "description": "Socket.IO adapter for SocketDocs, enabling contract-based validation and documentation.",
+  "keywords": [
+    "socketdocs",
+    "socket.io",
+    "adapter",
+    "websocket",
+    "validation"
+  ],
   "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "directory": "packages/socket-io"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

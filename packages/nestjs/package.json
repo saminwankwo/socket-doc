@@ -1,7 +1,22 @@
 {
  "name": "@socketdocs/nestjs",
   "version": "0.1.2",
+  "description": "NestJS adapter for SocketDocs, providing decorators for WebSocket documentation.",
+  "keywords": [
+    "socketdocs",
+    "nestjs",
+    "websocket",
+    "adapter",
+    "decorators",
+    "validation"
+  ],
   "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "directory": "packages/nestjs"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

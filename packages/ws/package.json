@@ -1,7 +1,21 @@
 {
  "name": "@socketdocs/ws",
   "version": "0.1.2",
+  "description": "Pure WebSocket (ws) adapter for SocketDocs.",
+  "keywords": [
+    "socketdocs",
+    "ws",
+    "websocket",
+    "adapter",
+    "validation"
+  ],
   "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "directory": "packages/ws"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

@@ -1,7 +1,21 @@
 {
  "name": "@socketdocs/fastify",
   "version": "0.1.2",
+  "description": "Fastify adapter for SocketDocs, integrating with @fastify/websocket.",
+  "keywords": [
+    "socketdocs",
+    "fastify",
+    "websocket",
+    "adapter",
+    "validation"
+  ],
   "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "directory": "packages/fastify"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

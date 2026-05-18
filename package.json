@@ -3,14 +3,36 @@
   "private": true,
   "version": "0.1.2",
   "description": "OpenAPI-style documentation framework for WebSocket APIs",
+  "keywords": [
+    "websocket",
+    "openapi",
+    "documentation",
+    "validation",
+    "zod",
+    "json-schema",
+    "realtime",
+    "socket.io",
+    "fastify",
+    "nestjs",
+    "typescript"
+  ],
   "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socketdocs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/saminwankwo/socketdocs/issues"
+  },
+  "homepage": "https://github.com/saminwankwo/socketdocs#readme",
   "workspaces": [
     "packages/*",
     "examples/*"
   ],
   "scripts": {
     "build": "npm run -ws build",
-    "test": "npm run -ws test",
+    "test": "npm test --workspaces --if-present",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
   },
