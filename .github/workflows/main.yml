@@ -25,10 +25,9 @@ jobs:
   publish:
     name: Publish to npm
     needs: test
-    # Trigger on tags OR when a PR is merged into main
+    # Trigger on tags OR when pushing/merging to main
     if: |
-      github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') ||
-      github.event_name == 'pull_request' && github.event.pull_request.merged == true
+      github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
