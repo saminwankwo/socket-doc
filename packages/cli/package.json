@@ -26,7 +26,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@socketdocs/core": "^0.1.3",
+    "@socketdocs/core": "^0.1.2",
     "commander": "^11.0.0",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1"
