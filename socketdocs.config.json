@@ -1,0 +1,6 @@
+{
+  "name": "my-realtime-api",
+  "version": "1.0.0",
+  "contractFile": "./contract.ts",
+  "outputFile": "./wsdoc.json"
+}

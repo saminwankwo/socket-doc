@@ -1,21 +1,20 @@
 {
-  "name": "@socketdocs/core",
+ "name": "@socketdocs/socket-io",
   "version": "0.1.2",
-  "description": "Core engine for SocketDocs, providing contract definitions and validation logic.",
+  "description": "Socket.IO adapter for SocketDocs, enabling contract-based validation and documentation.",
   "keywords": [
     "socketdocs",
+    "socket.io",
+    "adapter",
     "websocket",
-    "validation",
-    "zod",
-    "json-schema",
-    "contract-first"
+    "validation"
   ],
   "author": "Nwankwo Samuel",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/saminwankwo/socketdocs.git",
-    "directory": "packages/core"
+    "directory": "packages/socket-io"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,12 +25,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "jest --config ./jest.config.js"
+    "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "zod": "^3.22.0",
-    "zod-to-json-schema": "^3.22.3",
-    "ajv": "^8.12.0"
+    "@socketdocs/core": "^0.1.2",
+    "socket.io": "^4.7.0",
+    "zod": "^3.22.0"
   }
 }

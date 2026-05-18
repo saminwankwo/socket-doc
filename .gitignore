@@ -1,1 +1,9 @@
-node_modules
+docs
+old
+
+node_modules*
+dist
+package-lock.json*
+
+.DS_Store*
+private

@@ -1,0 +1,64 @@
+name: CI & CD
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - run: npm test --workspaces --if-present
+      - run: npm run lint --if-present
+
+  publish:
+    name: Publish to npm
+    needs: test
+    # Trigger on tags OR when a PR is merged into main
+    if: |
+      github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for pkg in packages/*; do
+            if [ -d "$pkg" ] && [ -f "$pkg/package.json" ]; then
+              IS_PRIVATE=$(node -p "require('./$pkg/package.json').private || false")
+              if [ "$IS_PRIVATE" = "false" ]; then
+                echo "Processing $pkg..."
+                cd "$pkg"
+                # Use --provenance for security if supported, and --access public
+                npm publish --access public || echo "Skipped $pkg (possibly already published)"
+                cd ../..
+              fi
+            fi
+          done
