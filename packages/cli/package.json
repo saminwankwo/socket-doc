@@ -5,6 +5,12 @@
   "bin": {
     "socketdocs": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@socketdocs/core": "^0.1.2",
     "commander": "^11.0.0",

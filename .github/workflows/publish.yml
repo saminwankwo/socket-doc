@@ -36,3 +36,7 @@ jobs:
         run: cd packages/cli && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish nestjs
+        run: cd packages/nestjs && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

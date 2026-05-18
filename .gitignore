@@ -3,9 +3,7 @@ old
 
 node_modules*
 dist
-Plan.md
-summary.md
-instruction.md
 package-lock.json*
 
 .DS_Store*
+private

@@ -4,6 +4,12 @@
   "author": "Nwankwo Samuel",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "jest --config ./jest.config.js"

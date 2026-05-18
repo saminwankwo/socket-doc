@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "build": "npm run -ws build",
+    "test": "npm run -ws test",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
   },
