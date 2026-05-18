@@ -1,5 +1,5 @@
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { z, ZodTypeAny } from "zod";
+import { ZodTypeAny } from "zod";
 import { PluginManager, SocketDocsPlugin } from "./plugins"
 
 export type Direction = 'client_to_server' | 'server_to_client' | 'bidirectional';

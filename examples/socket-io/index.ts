@@ -37,7 +37,7 @@ chat.event({
 // Bind the adapter
 const adapter = bindSocketioAdapter(io, contract, {
   chat: {
-    send_message: async ({ payload, socket }: any) => {
+    send_message: async ({ payload }: any) => {
       console.log("Valid message received via handler:", payload)
       // Broadcast the message back to all clients in the namespace
       adapter.emit(io.of("chat"), "chat", "new_message", {
@@ -57,7 +57,7 @@ contract.registerPlugin({
   }
 })
 
-io.on("connection", (socket) => {
+io.on("connection", (_socket) => {
   console.log("Client connected")
 })
 

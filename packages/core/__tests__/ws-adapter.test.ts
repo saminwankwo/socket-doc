@@ -1,6 +1,6 @@
 import { createContract } from "../src/contract";
 import { bindWsAdapter } from "../../ws/src/index";
-import { WebSocketServer, WebSocket } from "ws";
+import { WebSocketServer } from "ws";
 import { z } from "zod";
 
 describe("WsAdapter", () => {

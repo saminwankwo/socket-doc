@@ -1,5 +1,3 @@
-import { z } from "zod"
-
 export function Namespace(name: string) {
   return function (target: any) {
     target.__socketdocs_namespace = name
