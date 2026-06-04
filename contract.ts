@@ -15,7 +15,10 @@ main.event({
   payload: z.object({
     message: z.string().optional()
   })
-})
+}).errors([
+  { code: "RATE_LIMITED", description: "Too many pings" },
+  { code: "INVALID_MESSAGE", description: "Message content is invalid" }
+])
 
 main.event({
   name: "pong",

@@ -6,6 +6,11 @@ export type Direction = 'client_to_server' | 'server_to_client' | 'bidirectional
 
 export type EventType = 'fire_and_forget' | 'request_response';
 
+export interface ErrorDefinition {
+  code: string | number;
+  description: string;
+}
+
 export interface EventDefinition<P extends ZodTypeAny = any, R extends ZodTypeAny = any> {
   name: string;
   direction: Direction;
@@ -19,7 +24,7 @@ export interface EventDefinition<P extends ZodTypeAny = any, R extends ZodTypeAn
   roles?: string[];
   authRequired?: boolean;
   examples?: any[];
-  errors?: Record<number, string>;
+  errors?: ErrorDefinition[];
 }
 
 export interface NamespaceDefinition {
@@ -58,15 +63,24 @@ export function createContract(options: ContractOptions) {
       });
     }
     const ns = namespaces.get(nsName)!;
-    return {
+    const nsBuilder = {
       event<P extends ZodTypeAny, R extends ZodTypeAny>(def: EventDefinition<P, R>) {
         if (ns.events.has(def.name)) {
           throw new Error(`Event exists: ${nsName}.${def.name}`);
         }
         ns.events.set(def.name, def);
-        return def;
+        
+        const eventBuilder = {
+          errors(errs: ErrorDefinition[]) {
+            def.errors = [...(def.errors || []), ...errs];
+            return eventBuilder;
+          },
+          definition: def
+        };
+        return eventBuilder;
       }
     };
+    return nsBuilder;
   }
 
   function registerNamespaceClass(target: any) {
@@ -111,7 +125,7 @@ export function createContract(options: ContractOptions) {
           roles: def.roles ?? [],
           authRequired: !!def.authRequired,
           examples: def.examples ?? [],
-          errors: def.errors ?? {}
+          errors: def.errors ?? []
         };
       }
     }

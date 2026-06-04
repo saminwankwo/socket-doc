@@ -123,25 +123,27 @@ program
     }
 
     const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
-    const server = http.createServer((req, res) => {
-      // CORS
-      res.setHeader("Access-Control-Allow-Origin", "*")
-      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type")
-      
-      if (req.method === "OPTIONS") {
-        res.end()
-        return
-      }
+    
+    const startServer = (port: number) => {
+      const server = http.createServer((req, res) => {
+        // CORS
+        res.setHeader("Access-Control-Allow-Origin", "*")
+        res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type")
+        
+        if (req.method === "OPTIONS") {
+          res.end()
+          return
+        }
 
-      if (req.url === "/api/spec") {
-        res.setHeader("Content-Type", "application/json")
-        res.end(JSON.stringify(spec, null, 2))
-        return
-      }
+        if (req.url === "/api/spec") {
+          res.setHeader("Content-Type", "application/json")
+          res.end(JSON.stringify(spec, null, 2))
+          return
+        }
 
-      res.setHeader("Content-Type", "text/html")
-      res.end(`
+        res.setHeader("Content-Type", "text/html")
+        res.end(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -234,6 +236,20 @@ program
                     
                     <p class="text-slate-400 text-lg mb-8">${event.summary || event.description || "No description provided."}</p>
 
+                    ${event.errors && event.errors.length > 0 ? `
+                      <div class="mb-8">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest px-1 mb-3">Possible Errors</h4>
+                        <div class="grid gap-2">
+                          ${event.errors.map((err: any) => `
+                            <div class="flex items-center gap-3 px-3 py-2 bg-red-500/5 border border-red-500/10 rounded-lg">
+                              <span class="font-mono text-xs font-bold text-red-400">${err.code}</span>
+                              <span class="text-sm text-slate-400">${err.description}</span>
+                            </div>
+                          `).join("")}
+                        </div>
+                      </div>
+                    ` : ""}
+
                     <div class="grid lg:grid-cols-2 gap-8">
                       ${event.payloadSchema ? `
                         <div class="space-y-3">
@@ -269,8 +285,8 @@ program
       <footer class="mt-32 pt-12 border-t border-slate-800 text-slate-600 text-sm flex items-center justify-between">
         <p>&copy; 2024 SocketDocs. Built for senior-grade WebSocket development.</p>
         <div class="flex items-center gap-6">
-          <a href="#" class="hover:text-blue-400 transition-colors">Documentation</a>
-          <a href="#" class="hover:text-blue-400 transition-colors">GitHub</a>
+          <a href="https://github.com/saminwankwo/socketdocs#readme" class="hover:text-blue-400 transition-colors">Documentation</a>
+          <a href="https://github.com/saminwankwo/socketdocs" class="hover:text-blue-400 transition-colors">GitHub</a>
         </div>
       </footer>
     </main>
@@ -279,11 +295,23 @@ program
 </body>
 </html>
       `)
-    })
+      })
 
-    server.listen(options.port, () => {
-      console.log(`SocketDocs Spec Server running at http://localhost:${options.port}`)
-    })
+      server.on("error", (err: any) => {
+        if (err.code === "EADDRINUSE") {
+          console.log(`Port ${port} is in use, trying ${port + 1}...`)
+          startServer(port + 1)
+        } else {
+          console.error("Server error:", err)
+        }
+      })
+
+      server.listen(port, () => {
+        console.log(`SocketDocs Spec Server running at http://localhost:${port}`)
+      })
+    }
+
+    startServer(parseInt(options.port))
   })
 
 program

@@ -1,8 +1,66 @@
 {
-  "specVersion": "0.1",
+  "specVersion": "1.0.0",
   "info": {
-    "name": "my-realtime-api",
-    "version": "1.0.0"
+    "name": "demo-api",
+    "version": "1.0.0",
+    "description": "A demo API for testing the CLI"
   },
-  "namespaces": {}
+  "servers": [],
+  "namespaces": {
+    "main": {
+      "name": "main",
+      "events": {
+        "ping": {
+          "direction": "client_to_server",
+          "type": "fire_and_forget",
+          "payloadSchema": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "responseSchema": null,
+          "roles": [],
+          "authRequired": false,
+          "examples": [],
+          "errors": [
+            {
+              "code": "RATE_LIMITED",
+              "description": "Too many pings"
+            },
+            {
+              "code": "INVALID_MESSAGE",
+              "description": "Message content is invalid"
+            }
+          ]
+        },
+        "pong": {
+          "direction": "server_to_client",
+          "type": "fire_and_forget",
+          "payloadSchema": {
+            "type": "object",
+            "properties": {
+              "time": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "time"
+            ],
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "responseSchema": null,
+          "roles": [],
+          "authRequired": false,
+          "examples": [],
+          "errors": []
+        }
+      }
+    }
+  }
 }

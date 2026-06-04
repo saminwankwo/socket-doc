@@ -242,6 +242,20 @@ const App = () => {
                         <div className="p-6 space-y-6">
                           <p className="text-slate-400">{event.summary || event.description || 'No description available.'}</p>
 
+                          {event.errors && event.errors.length > 0 && (
+                            <div className="space-y-3">
+                              <h4 className="text-sm font-semibold text-slate-300">Possible Errors</h4>
+                              <div className="grid gap-2">
+                                {event.errors.map((err: any, idx: number) => (
+                                  <div key={idx} className="flex items-center gap-3 px-3 py-2 bg-red-500/5 border border-red-500/10 rounded-lg">
+                                    <span className="font-mono text-xs font-bold text-red-400">{err.code}</span>
+                                    <span className="text-sm text-slate-400">{err.description}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           <div className="grid md:grid-cols-2 gap-8">
                             {event.payloadSchema && (
                               <div className="space-y-3">
