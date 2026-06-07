@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-06-08
+
+### Changed
+- **Major Dependency Updates**: Updated all core dependencies to their latest versions for better performance and security.
+  - Updated `zod` to `^4.4.3`.
+  - Updated `typescript` to `^6.0.3`.
+  - Updated `jest` to `^30.4.2`.
+  - Updated `eslint` to `^10.4.1`.
+  - Updated `nestjs` to `^11.1.24`.
+  - Updated `fastify` to `^5.8.5`.
+  - Updated `react` to `^19.2.7` and `vite` to `^8.0.16` in docs-server.
+- **Internal Synchronization**: All packages in the monorepo have been bumped to `0.2.0`.
+
 ## [0.1.3] - 2026-06-04
 
 ### Added

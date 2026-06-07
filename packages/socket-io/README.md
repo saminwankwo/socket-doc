@@ -16,7 +16,7 @@ npm install @socketdocs/socket-io @socketdocs/core socket.io zod
 import { createContract } from '@socketdocs/core';
 import { z } from 'zod';
 
-const contract = createContract({ name: 'My API', version: '1.0.0' });
+const contract = createContract({ name: 'My API', version: '0.2.0' });
 contract.namespace('default').event({
   name: 'hello',
   direction: 'client_to_server',

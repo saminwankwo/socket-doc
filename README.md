@@ -32,7 +32,7 @@ import { z } from "zod";
 
 export const contract = createContract({
   name: "Chat API",
-  version: "1.0.0",
+  version: "0.2.0",
   description: "A simple realtime chat API"
 });
 

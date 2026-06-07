@@ -35,7 +35,7 @@ export function bindWsAdapter(wss: WebSocketServer, contract: Contract, handlers
     if (opts?.onAuth) {
       try {
         authCtx = await opts.onAuth(socket, request)
-      } catch (err) {
+      } catch (_err) {
         socket.close(1008, "Unauthorized")
         return
       }

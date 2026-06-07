@@ -5,11 +5,11 @@ import http from "http"
 import { Command } from "commander"
 import Ajv from "ajv"
 import addFormats from "ajv-formats"
-import { TypescriptGenerator } from "./generators/typescript"
-import { GoGenerator } from "./generators/go"
-import { PythonGenerator } from "./generators/python"
-import { PhpGenerator } from "./generators/php"
-import { SdkGenerator } from "./generators"
+import { TypescriptGenerator } from "./generators/typescript.js"
+import { GoGenerator } from "./generators/go.js"
+import { PythonGenerator } from "./generators/python.js"
+import { PhpGenerator } from "./generators/php.js"
+import { SdkGenerator } from "./generators/index.js"
 import { generateHtml } from "@socketdocs/core"
 
 const program = new Command()
@@ -90,11 +90,11 @@ program
       // For this implementation, we require the file. 
       // If it's TS, we assume it's pre-compiled or we use ts-node
       if (contractFilePath.endsWith(".ts")) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         require("ts-node").register()
       }
       
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mod = require(contractFilePath)
       const contract = mod.contract || mod.default
       
@@ -215,10 +215,10 @@ program
     
     try {
       if (contractFilePath.endsWith(".ts")) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         require("ts-node").register()
       }
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mod = require(contractFilePath)
       const contract = mod.contract || mod.default
       if (!contract) throw new Error("Contract not found")

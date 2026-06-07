@@ -17,7 +17,7 @@ export function bindSocketioAdapter(io: Server | SocketioNamespace, contract: Co
       if (opts?.onAuth) {
         try {
           authCtx = await opts.onAuth(socket)
-        } catch (err) {
+        } catch (_err) {
           socket.disconnect(true)
           return
         }

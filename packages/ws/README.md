@@ -16,7 +16,7 @@ npm install @socketdocs/ws @socketdocs/core ws zod
 import { createContract } from '@socketdocs/core';
 import { z } from 'zod';
 
-const contract = createContract({ name: 'Raw WS API', version: '1.0.0' });
+const contract = createContract({ name: 'Raw WS API', version: '0.2.0' });
 contract.namespace('default').event({
   name: 'ping',
   direction: 'client_to_server',

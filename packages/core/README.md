@@ -25,7 +25,7 @@ import { createContract } from '@socketdocs/core';
 
 const contract = createContract({
   name: 'Realtime Chat',
-  version: '1.2.0',
+  version: '0.2.0',
   description: 'A professional chat API with room support.',
 });
 ```
