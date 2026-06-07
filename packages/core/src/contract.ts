@@ -32,10 +32,18 @@ export interface NamespaceDefinition {
   events: Map<string, EventDefinition>;
 }
 
+export interface SecurityRequirement {
+  name: string;
+  type: 'apiKey' | 'http' | 'oauth2';
+  in?: 'header' | 'query' | 'cookie';
+  description?: string;
+}
+
 export interface ContractOptions {
   name: string;
   version: string;
   description?: string;
+  security?: SecurityRequirement[];
 }
 
 export function createContract(options: ContractOptions) {
@@ -105,6 +113,7 @@ export function createContract(options: ContractOptions) {
         version: options.version,
         description: options.description || ""
       },
+      security: options.security || [],
       servers: [],
       namespaces: {}
     };

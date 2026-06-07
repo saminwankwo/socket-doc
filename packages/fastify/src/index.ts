@@ -1,10 +1,23 @@
 import { FastifyInstance, FastifyRequest } from "fastify"
 import { SocketStream } from "@fastify/websocket"
-import { Contract, createValidator } from "@socketdocs/core"
+import { Contract, createValidator, generateHtml } from "@socketdocs/core"
 
 export interface FastifyAdapterOptions {
   onAuth?: (connection: SocketStream, request: FastifyRequest) => Promise<{ userId?: string; roles?: string[] } | null>
   logger?: (msg: string) => void
+}
+
+export function serveFastifyDocs(fastify: FastifyInstance, contract: Contract, path: string = "/docs") {
+  const spec = contract.generateSpec()
+  const html = generateHtml(spec)
+
+  fastify.get(path, async (_request, reply) => {
+    reply.type("text/html").send(html)
+  })
+
+  fastify.get(`${path}/spec`, async (_request, reply) => {
+    reply.type("application/json").send(spec)
+  })
 }
 
 export function bindFastifyAdapter(fastify: FastifyInstance, contract: Contract, handlers: any, opts?: FastifyAdapterOptions) {

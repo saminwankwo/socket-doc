@@ -10,7 +10,9 @@ SocketDocs allows you to define a single source of truth for your WebSocket even
 - **Framework Agnostic**: Adapters for Socket.IO, standard WebSockets, Fastify, and NestJS.
 - **Unified Validation**: Built-in support for Zod and JSON Schema (AJV).
 - **Interactive Documentation**: Swagger-like UI with a built-in playground to test events.
+- **Auto-Mountable Docs**: Mount documentation directly on your API server (e.g., `/docs`).
 - **SDK Generation**: Generate typed clients for TypeScript, Go, Python, and PHP.
+- **Enhanced DX**: Automatic port detection and better error schema mapping.
 
 ## Installation
 

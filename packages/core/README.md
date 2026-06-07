@@ -39,7 +39,7 @@ const adminNamespace = contract.namespace('admin');
 ```
 
 ### **Events**
-Events are defined with a name, a direction, and a payload schema.
+Events are defined with a name, a direction, and a payload schema. You can also chain `.errors()` to document possible error responses.
 
 ```typescript
 import { z } from 'zod';
@@ -54,6 +54,27 @@ chatNamespace.event({
     text: z.string().nonempty(),
     timestamp: z.number().default(() => Date.now()),
   }),
+}).errors([
+  { code: 'AUTH_FAILED', description: 'User not logged in' },
+  { code: 'RATE_LIMITED', description: 'Too many messages' }
+]);
+```
+
+### **Security**
+Document authentication requirements for your initial connection.
+
+```typescript
+const contract = createContract({
+  name: 'Secure API',
+  version: '1.0.0',
+  security: [
+    {
+      name: 'AuthToken',
+      type: 'apiKey',
+      in: 'header',
+      description: 'JWT token required for connection'
+    }
+  ]
 });
 ```
 

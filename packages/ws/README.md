@@ -32,7 +32,16 @@ import { bindWSAdapter } from '@socketdocs/ws';
 
 const wss = new WebSocketServer({ port: 3000 });
 
-// Handlers for the events defined in the contract
+// 2. Serve Interactive Documentation UI (Optional)
+import { handleWsDocs } from '@socketdocs/ws';
+import { createServer } from 'http';
+
+const server = createServer((req, res) => {
+  if (handleWsDocs(req, res, contract, '/docs')) return;
+  // ... handle other routes
+});
+
+// 3. Handlers for the events defined in the contract
 const handlers = {
   'default': {
     'ping': async ({ payload, socket }: any) => {
@@ -48,6 +57,7 @@ bindWSAdapter(wss, contract, handlers);
 ## 🛠️ Features
 
 - **JSON Protocol Support**: Automatically parses incoming messages and serializes outgoing ones, following a consistent `{ event: string, payload: any }` structure.
+- **Auto-Mountable Docs**: Easily serve documentation UI from your existing HTTP server.
 - **Validation**: Every incoming message is validated against its Zod schema. Invalid messages are ignored or generate errors.
 - **Clean Event Handling**: Organize your WebSocket logic with a simple handler mapping.
 - **Schema-First**: Leverage your existing `Contract` to ensure your raw WebSocket server stays in sync with its documentation.
