@@ -1,4 +1,4 @@
-import { SdkGenerator } from "./index";
+import { SdkGenerator } from "./index.js";
 
 export class TypescriptGenerator implements SdkGenerator {
   constructor(private lang: 'ts' | 'js') {}

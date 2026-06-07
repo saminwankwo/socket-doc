@@ -1,4 +1,4 @@
-import { createContract } from "../src/contract";
+import { createContract } from "../src/contract.js";
 import { z } from "zod";
 
 describe("createContract", () => {

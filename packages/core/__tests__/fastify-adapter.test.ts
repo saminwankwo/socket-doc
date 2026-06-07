@@ -1,5 +1,5 @@
-import { createContract } from "../src/contract";
-import { bindFastifyAdapter } from "../../fastify/src/index";
+import { createContract } from "../src/contract.js";
+import { bindFastifyAdapter } from "../../fastify/src/index.js";
 import { z } from "zod";
 
 describe("FastifyAdapter", () => {

@@ -3,14 +3,17 @@ import fs from "fs"
 import path from "path"
 import http from "http"
 import { Command } from "commander"
-import Ajv from "ajv"
-import addFormats from "ajv-formats"
+import AjvModule from "ajv"
+import addFormatsModule from "ajv-formats"
 import { TypescriptGenerator } from "./generators/typescript.js"
 import { GoGenerator } from "./generators/go.js"
 import { PythonGenerator } from "./generators/python.js"
 import { PhpGenerator } from "./generators/php.js"
 import { SdkGenerator } from "./generators/index.js"
 import { generateHtml } from "@socketdocs/core"
+
+const Ajv = (AjvModule as any).default || AjvModule
+const addFormats = (addFormatsModule as any).default || addFormatsModule
 
 const program = new Command()
 const ajv = new Ajv()
@@ -88,14 +91,10 @@ program
     try {
       // In a real CLI, we would use ts-node/register to load the contract
       // For this implementation, we require the file. 
-      // If it's TS, we assume it's pre-compiled or we use ts-node
-      if (contractFilePath.endsWith(".ts")) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        require("ts-node").register()
-      }
+      // If it's TS, we assume it's pre-compiled or we use ts-node loader
       
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require(contractFilePath)
+      // import(pathToFileURL(contractFilePath).href)
+      const mod = await import(`file://${contractFilePath}`)
       const contract = mod.contract || mod.default
       
       if (!contract || typeof contract.generateSpec !== "function") {
@@ -214,12 +213,9 @@ program
     const contractFilePath = path.resolve(process.cwd(), config.contractFile)
     
     try {
-      if (contractFilePath.endsWith(".ts")) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        require("ts-node").register()
-      }
+      // If it's TS, we assume it's pre-compiled or we use ts-node loader
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require(contractFilePath)
+      const mod = await import(`file://${contractFilePath}`)
       const contract = mod.contract || mod.default
       if (!contract) throw new Error("Contract not found")
       console.log("Contract is valid.")
