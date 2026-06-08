@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Module, DynamicModule, Global, Inject, OnModuleInit } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { SubscribeMessage } from '@nestjs/websockets';
-import { Contract } from '@socketdocs/core';
+import type { Contract } from '@socketdocs/core';
 
 
 export const SOCKETDOCS_NAMESPACE = 'socketdocs:namespace';

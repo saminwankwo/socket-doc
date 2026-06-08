@@ -214,7 +214,6 @@ program
     
     try {
       // If it's TS, we assume it's pre-compiled or we use ts-node loader
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mod = await import(`file://${contractFilePath}`)
       const contract = mod.contract || mod.default
       if (!contract) throw new Error("Contract not found")
