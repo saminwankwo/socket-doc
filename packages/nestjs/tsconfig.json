@@ -3,12 +3,7 @@
  "compilerOptions": {
    "outDir": "dist",
    "rootDir": "src",
-   "composite": true,
-   "baseUrl": ".",
-   "paths": {
-     "@socketdocs/core": ["../core/src/index.ts"],
-     "@socketdocs/core/*": ["../core/src/*"]
-   }
+   "composite": true
  },
  "include": ["src"],
  "references": [
