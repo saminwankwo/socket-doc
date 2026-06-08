@@ -12,6 +12,10 @@
     "skipLibCheck": true,
     "declaration": true,
     "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@socketdocs/core": ["../core/src/index.ts"]
+    },
     "resolveJsonModule": true,
     "types": ["node", "jest"]
   }
