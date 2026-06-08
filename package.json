@@ -31,7 +31,7 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "npm run -ws build",
+    "build": "tsc -b && npm run build --workspace=@socketdocs/docs-server",
     "test": "npm test --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
