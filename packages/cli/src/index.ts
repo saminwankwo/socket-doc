@@ -10,7 +10,7 @@ import { GoGenerator } from "./generators/go.js"
 import { PythonGenerator } from "./generators/python.js"
 import { PhpGenerator } from "./generators/php.js"
 import { SdkGenerator } from "./generators/index.js"
-import { generateHtml } from "@socketdocs/core"
+import { generateHtml, lintSpec, convertToAsyncApi } from "@socketdocs/core"
 import jiti from "jiti"
 
 const Ajv = (AjvModule as any).default || AjvModule
@@ -238,6 +238,66 @@ program
     // to generate random data based on JSON Schema.
     // For now, we'll just log that it's starting.
     console.log("Mock server is ready. (Mock data generation placeholder)")
+  })
+
+program
+  .command("lint")
+  .description("Lint the contract for common mistakes and missing documentation")
+  .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
+  .action(async (options) => {
+    const configPath = path.resolve(process.cwd(), options.config)
+    if (!fs.existsSync(configPath)) {
+      console.error(`Config file not found at ${configPath}`)
+      process.exit(1)
+    }
+
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
+    const contractFilePath = path.resolve(process.cwd(), config.contractFile)
+
+    try {
+      const load = jiti(import.meta.url, { interopDefault: true })
+      const contract = load(contractFilePath)
+      const spec = contract.generateSpec()
+      
+      const issues = lintSpec(spec)
+      
+      if (issues.length === 0) {
+        console.log("✅ No issues found in contract.")
+        return
+      }
+
+      console.log(`Found ${issues.length} issues:`)
+      issues.forEach(issue => {
+        const icon = issue.type === 'error' ? '❌' : '⚠️'
+        console.log(`${icon} [${issue.path}] ${issue.message}`)
+      })
+
+      if (issues.some(i => i.type === 'error')) {
+        process.exit(1)
+      }
+    } catch (err) {
+      console.error("Error linting contract:", err)
+      process.exit(1)
+    }
+  })
+
+program
+  .command("export-asyncapi")
+  .description("Export the contract as an AsyncAPI specification")
+  .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
+  .option("-o, --output <path>", "Output file path", "./asyncapi.json")
+  .action((options) => {
+    const specPath = path.resolve(process.cwd(), options.spec)
+    if (!fs.existsSync(specPath)) {
+      console.error(`Spec file not found at ${specPath}`)
+      process.exit(1)
+    }
+
+    const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
+    const asyncApi = convertToAsyncApi(spec)
+    
+    fs.writeFileSync(options.output, JSON.stringify(asyncApi, null, 2))
+    console.log(`AsyncAPI specification exported to ${options.output}`)
   })
 
 program.parse(process.argv)
