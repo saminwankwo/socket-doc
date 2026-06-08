@@ -93,8 +93,16 @@ SocketDocs is extensible. You can register plugins to hook into the event lifecy
 
 ```typescript
 contract.registerPlugin({
+  name: 'Logger',
+  version: '1.0.0',
   onEvent(name, payload, namespace) {
-    console.log(`[SocketDocs] Event "${name}" in "${namespace}" triggered.`);
+    console.log(`[SocketDocs] Incoming Event: ${namespace}/${name}`);
+  },
+  onResponse(name, response, namespace) {
+    console.log(`[SocketDocs] Outgoing Response: ${namespace}/${name}`);
+  },
+  onError(name, error, namespace) {
+    console.error(`[SocketDocs] Error in ${namespace}/${name}:`, error);
   }
 });
 ```

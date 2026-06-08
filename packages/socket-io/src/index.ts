@@ -27,23 +27,29 @@ export function bindSocketioAdapter(io: Server | SocketioNamespace, contract: Co
       for (const [eventName, eventDef] of ns.events) {
         if (eventDef.direction === "client_to_server" || eventDef.direction === "bidirectional") {
           const validator = createValidator(eventDef)
+          const responseValidator = createValidator(eventDef, 'response')
 
           socket.on(eventName, async (payload: any, ack?: any) => {
             // Validate payload
             const result = validator.validate(payload)
             if (!result.success) {
               console.error(`[SocketDocs] Validation failed for event "${eventName}":`, result.error)
+              contract.plugins.notifyError(eventName, { type: 'validation', error: result.error }, nsName)
               return ack?.({ status: "error", code: 400, message: "Invalid payload", details: result.error })
             }
             payload = result.data
 
             // Auth check
             if (eventDef.authRequired && !authCtx) {
+              contract.plugins.notifyError(eventName, { type: 'auth', message: 'Unauthorized' }, nsName)
               return ack?.({ status: "error", code: 401, message: "Unauthorized" })
             }
             if (eventDef.roles && eventDef.roles.length > 0) {
               const ok = eventDef.roles.some((r: string) => authCtx?.roles?.includes(r))
-              if (!ok) return ack?.({ status: "error", code: 403, message: "Forbidden" })
+              if (!ok) {
+                contract.plugins.notifyError(eventName, { type: 'auth', message: 'Forbidden' }, nsName)
+                return ack?.({ status: "error", code: 403, message: "Forbidden" })
+              }
             }
 
             // Notify plugins
@@ -59,16 +65,17 @@ export function bindSocketioAdapter(io: Server | SocketioNamespace, contract: Co
 
             try {
               const result = await handler({ payload, socket, auth: authCtx })
-              if (eventDef.response) {
-                const rsp = eventDef.response.safeParse(result)
-                if (!rsp.success) {
-                  return ack?.({ status: "error", code: 500, message: "Invalid response shape" })
-                }
-                return ack?.(rsp.data)
-              } else {
-                return ack?.(result)
+              const responseResult = responseValidator.validate(result)
+              
+              if (!responseResult.success) {
+                contract.plugins.notifyError(eventName, { type: 'response_validation', error: responseResult.error }, nsName)
+                return ack?.({ status: "error", code: 500, message: "Invalid response shape" })
               }
+              
+              contract.plugins.notifyResponse(eventName, responseResult.data, nsName)
+              return ack?.(responseResult.data)
             } catch (err: any) {
+              contract.plugins.notifyError(eventName, { type: 'handler_error', error: err.message || err }, nsName)
               return ack?.({ status: "error", code: 500, message: err.message || "Internal error" })
             }
           })

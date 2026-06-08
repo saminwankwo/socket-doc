@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.0] - 2026-06-08
 
+### Added
+- **Plugin Lifecycle Hooks**: Added `onResponse` and `onError` hooks to the plugin system for enhanced monitoring and logging.
+- **Improved CLI Loading**: Integrated `jiti` for robust runtime loading of TypeScript and ESM contracts without pre-compilation.
+
 ### Changed
+- **Build System Overhaul**: Migrated to **TypeScript Project References** for reliable topological builds across the monorepo.
+- **Unified Validation**: Refactored internal validation logic to provide consistent behavior for both request (payload) and response validation using Zod or JSON Schema.
+- **Monorepo Orchestration**: Added root `tsconfig.json` and optimized `npm run build` to handle workspace dependencies correctly.
 - **Major Dependency Updates**: Updated all core dependencies to their latest versions for better performance and security.
   - Updated `zod` to `^4.4.3`.
   - Updated `typescript` to `^6.0.3`.

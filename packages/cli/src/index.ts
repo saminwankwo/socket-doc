@@ -11,6 +11,7 @@ import { PythonGenerator } from "./generators/python.js"
 import { PhpGenerator } from "./generators/php.js"
 import { SdkGenerator } from "./generators/index.js"
 import { generateHtml } from "@socketdocs/core"
+import jiti from "jiti"
 
 const Ajv = (AjvModule as any).default || AjvModule
 const addFormats = (addFormatsModule as any).default || addFormatsModule
@@ -89,13 +90,8 @@ program
     console.log(`Reading contract from ${contractFilePath}...`)
     
     try {
-      // In a real CLI, we would use ts-node/register to load the contract
-      // For this implementation, we require the file. 
-      // If it's TS, we assume it's pre-compiled or we use ts-node loader
-      
-      // import(pathToFileURL(contractFilePath).href)
-      const mod = await import(`file://${contractFilePath}`)
-      const contract = mod.contract || mod.default
+      const load = jiti(import.meta.url, { interopDefault: true })
+      const contract = load(contractFilePath)
       
       if (!contract || typeof contract.generateSpec !== "function") {
         throw new Error("Contract file must export a 'contract' object created with createContract()")
@@ -213,9 +209,8 @@ program
     const contractFilePath = path.resolve(process.cwd(), config.contractFile)
     
     try {
-      // If it's TS, we assume it's pre-compiled or we use ts-node loader
-      const mod = await import(`file://${contractFilePath}`)
-      const contract = mod.contract || mod.default
+      const load = jiti(import.meta.url, { interopDefault: true })
+      const contract = load(contractFilePath)
       if (!contract) throw new Error("Contract not found")
       console.log("Contract is valid.")
     } catch (err) {

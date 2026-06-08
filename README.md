@@ -11,8 +11,10 @@ SocketDocs allows you to define a single source of truth for your WebSocket even
 - **Unified Validation**: Built-in support for Zod and JSON Schema (AJV).
 - **Interactive Documentation**: Swagger-like UI with a built-in playground to test events.
 - **Auto-Mountable Docs**: Mount documentation directly on your API server (e.g., `/docs`).
+- **Plugin System**: Extensible hooks for events, responses, and errors (logging, analytics, monitoring).
 - **SDK Generation**: Generate typed clients for TypeScript, Go, Python, and PHP.
-- **Enhanced DX**: Automatic port detection and better error schema mapping.
+- **Robust Build System**: Built with TypeScript Project References for reliable monorepo development.
+- **Enhanced DX**: Automatic port detection, better error schema mapping, and seamless TypeScript contract loading.
 
 ## Installation
 

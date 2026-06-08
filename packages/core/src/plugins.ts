@@ -5,6 +5,8 @@ export interface SocketDocsPlugin {
   version: string
   onSetup?: (contract: Contract) => void
   onEvent?: (eventName: string, payload: any, namespace: string) => void
+  onResponse?: (eventName: string, response: any, namespace: string) => void
+  onError?: (eventName: string, error: any, namespace: string) => void
   onSpecGenerated?: (spec: any) => void
 }
 
@@ -24,6 +26,22 @@ export class PluginManager {
     for (const plugin of this.plugins) {
       if (plugin.onEvent) {
         plugin.onEvent(eventName, payload, namespace)
+      }
+    }
+  }
+
+  notifyResponse(eventName: string, response: any, namespace: string) {
+    for (const plugin of this.plugins) {
+      if (plugin.onResponse) {
+        plugin.onResponse(eventName, response, namespace)
+      }
+    }
+  }
+
+  notifyError(eventName: string, error: any, namespace: string) {
+    for (const plugin of this.plugins) {
+      if (plugin.onError) {
+        plugin.onError(eventName, error, namespace)
       }
     }
   }
