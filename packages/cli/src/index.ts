@@ -10,7 +10,7 @@ import { GoGenerator } from "./generators/go.js"
 import { PythonGenerator } from "./generators/python.js"
 import { PhpGenerator } from "./generators/php.js"
 import { SdkGenerator } from "./generators/index.js"
-import { generateHtml, lintSpec, convertToAsyncApi } from "@socketdocs/core"
+import { generateHtml, lintSpec, convertToAsyncApi, LintIssue } from "@socketdocs/core"
 import jiti from "jiti"
 
 const Ajv = (AjvModule as any).default || AjvModule
@@ -267,12 +267,12 @@ program
       }
 
       console.log(`Found ${issues.length} issues:`)
-      issues.forEach(issue => {
+      issues.forEach((issue: LintIssue) => {
         const icon = issue.type === 'error' ? '❌' : '⚠️'
         console.log(`${icon} [${issue.path}] ${issue.message}`)
       })
 
-      if (issues.some(i => i.type === 'error')) {
+      if (issues.some((i: LintIssue) => i.type === 'error')) {
         process.exit(1)
       }
     } catch (err) {
