@@ -13,6 +13,10 @@
     "declaration": true,
     "composite": true,
     "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@socketdocs/core": ["packages/core/src/index.ts"]
+    },
     "types": ["node", "jest"]
   }
 }
