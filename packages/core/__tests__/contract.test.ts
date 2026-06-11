@@ -1,3 +1,4 @@
+import { describe, expect, test } from "vitest";
 import { createContract } from "../src/contract.js";
 import { z } from "zod";
 
@@ -26,26 +27,26 @@ describe("createContract", () => {
   });
 
   test("should throw error if duplicate event name is added", () => {
-    const contract = createContract({ name: "test", version: "1" });
+    const contract = createContract({ name: "test", version: "1.0.0" });
     const ns = contract.namespace("test");
     ns.event({ name: "e1", direction: "bidirectional" });
     expect(() => ns.event({ name: "e1", direction: "bidirectional" })).toThrow("Event exists: test.e1");
   });
 
   test("should handle bidirectional events correctly", () => {
-    const contract = createContract({ name: "test", version: "1" });
+    const contract = createContract({ name: "test", version: "1.0.0" });
     const ns = contract.namespace("test");
-    ns.event({ 
-      name: "bidirectional_event", 
-      direction: "bidirectional" 
+    ns.event({
+      name: "bidirectional_event",
+      direction: "bidirectional"
     });
-    
+
     const spec = contract.generateSpec();
     expect(spec.namespaces.test.events.bidirectional_event.direction).toBe("bidirectional");
   });
 
   test("should handle request-response events with both payload and response schemas", () => {
-    const contract = createContract({ name: "test", version: "1" });
+    const contract = createContract({ name: "test", version: "1.0.0" });
     const ns = contract.namespace("test");
     ns.event({
       name: "get_data",
@@ -62,7 +63,7 @@ describe("createContract", () => {
   });
 
   test("should include errors in generated spec", () => {
-    const contract = createContract({ name: "test", version: "1" });
+    const contract = createContract({ name: "test", version: "1.0.0" });
     const ns = contract.namespace("test");
     const eventBuilder = ns.event({ name: "event_with_errors", direction: "client_to_server" });
     eventBuilder.errors([
@@ -90,7 +91,7 @@ describe("createContract", () => {
   });
 
   test("should handle auth required events", () => {
-    const contract = createContract({ name: "test", version: "1" });
+    const contract = createContract({ name: "test", version: "1.0.0" });
     const ns = contract.namespace("test");
     ns.event({
       name: "sensitive_action",
@@ -105,7 +106,7 @@ describe("createContract", () => {
   });
 
   test("should include examples in generated spec", () => {
-    const contract = createContract({ name: "test", version: "1" });
+    const contract = createContract({ name: "test", version: "1.0.0" });
     const ns = contract.namespace("test");
     ns.event({
       name: "event_with_examples",
@@ -122,10 +123,10 @@ describe("createContract", () => {
 
   test("should handle multiple namespaces correctly", () => {
     const contract = createContract({ name: "multi-ns-api", version: "1.0.0" });
-    
+
     const chatNs = contract.namespace("chat");
     chatNs.event({ name: "send", direction: "client_to_server" });
-    
+
     const notificationsNs = contract.namespace("notifications");
     notificationsNs.event({ name: "push", direction: "server_to_client" });
 
@@ -136,10 +137,10 @@ describe("createContract", () => {
   });
 
   test("should default type when not specified", () => {
-    const contract = createContract({ name: "test", version: "1" });
+    const contract = createContract({ name: "test", version: "1.0.0" });
     const ns = contract.namespace("test");
     ns.event({ name: "default_type_event", direction: "client_to_server" });
-    
+
     const spec = contract.generateSpec();
     expect(spec.namespaces.test.events.default_type_event.type).toBe("fire_and_forget");
   });

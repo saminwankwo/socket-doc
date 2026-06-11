@@ -1,3 +1,4 @@
+import { describe, expect, test, beforeEach } from "vitest";
 import { createContract } from "../src/contract.js";
 import { bindWsAdapter } from "../../ws/src/index.js";
 import { WebSocketServer } from "ws";

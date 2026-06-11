@@ -1,3 +1,4 @@
+import { describe, expect, test, beforeEach } from "vitest";
 import { createContract } from "../src/contract.js";
 import { bindFastifyAdapter } from "../../fastify/src/index.js";
 import { z } from "zod";

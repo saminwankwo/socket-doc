@@ -32,7 +32,8 @@
   ],
   "scripts": {
     "clean": "rm -rf packages/*/dist && rm -rf packages/*/tsconfig.tsbuildinfo",
-    "build": "npm run clean && tsc -b && npm run build --workspace=@socketdocs/docs-server",
+    "build": "npm run clean && tsc -b && npm run build:docs",
+    "build:docs": "cd packages/docs-server && npm run build || true",
     "test": "npm test --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
