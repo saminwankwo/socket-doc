@@ -30,7 +30,7 @@ function generateMockData(schema: any): any {
   if (!schema) return undefined
 
   switch (schema.type) {
-    case "string":
+    case "string": {
       if (schema.format === "email") return faker.internet.email()
       if (schema.format === "uri") return faker.internet.url()
       if (schema.format === "uuid") return faker.string.uuid()
@@ -47,18 +47,20 @@ function generateMockData(schema: any): any {
       return faker.lorem.words(
         Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength
       )
+    }
 
     case "number":
-    case "integer":
+    case "integer": {
       const min = schema.minimum || 0
       const max = schema.maximum || 100
       const num = faker.number.int({ min, max })
       return schema.type === "integer" ? Math.floor(num) : num
+    }
 
     case "boolean":
       return faker.datatype.boolean()
 
-    case "array":
+    case "array": {
       const minItems = schema.minItems || 1
       const maxItems = schema.maxItems || 5
       const items = []
@@ -67,8 +69,9 @@ function generateMockData(schema: any): any {
         items.push(generateMockData(schema.items))
       }
       return items
+    }
 
-    case "object":
+    case "object": {
       const obj: any = {}
       const required = schema.required || []
       const properties = schema.properties || {}
@@ -92,6 +95,7 @@ function generateMockData(schema: any): any {
       }
       
       return obj
+    }
 
     case "null":
       return null
@@ -486,10 +490,9 @@ program
               console.log(`  [${nsName}] Received event: ${evtName}`, payload)
 
               // Validate payload if schema exists
-              let isValid = true
               if (eventDef.payloadSchema) {
                 const validate = ajv.compile(eventDef.payloadSchema)
-                isValid = validate(payload)
+                const isValid = validate(payload)
                 if (!isValid) {
                   console.error(`  [${nsName}] Invalid payload:`, validate.errors)
                   if (ack) {

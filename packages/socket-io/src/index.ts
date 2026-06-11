@@ -1,12 +1,12 @@
 import { Server, Socket, Namespace as SocketioNamespace } from "socket.io";
-import { Contract, createValidator, EventDefinition } from "@socketdocs/core";
+import { Contract, createValidator } from "@socketdocs/core";
 
 export interface SocketioAdapterOptions {
   onAuth?: (socket: Socket) => Promise<{ userId?: string; roles?: string[] } | null>;
   logger?: (msg: string) => void;
 }
 
-export interface HandlerContext<T = any, U = any> {
+export interface HandlerContext<T = any, _U = any> {
   payload: T;
   socket: Socket;
   auth: { userId?: string; roles?: string[] } | null;
