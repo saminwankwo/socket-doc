@@ -6,15 +6,19 @@ SocketDocs allows you to define a single source of truth for your WebSocket even
 
 ## Features
 
-- **Contract-First Design**: Define your API once, use it everywhere.
-- **Framework Agnostic**: Adapters for Socket.IO, standard WebSockets, Fastify, and NestJS.
-- **Unified Validation**: Built-in support for Zod and JSON Schema (AJV).
-- **Interactive Documentation**: Swagger-like UI with a built-in playground to test events.
-- **Auto-Mountable Docs**: Mount documentation directly on your API server (e.g., `/docs`).
-- **Plugin System**: Extensible hooks for events, responses, and errors (logging, analytics, monitoring).
-- **SDK Generation**: Generate typed clients for TypeScript, Go, Python, and PHP.
-- **Robust Build System**: Built with TypeScript Project References for reliable monorepo development.
-- **Enhanced DX**: Automatic port detection, better error schema mapping, and seamless TypeScript contract loading.
+- **Contract-First Design**: Define your API once, use it everywhere
+- **Framework Agnostic**: Adapters for Socket.IO, standard WebSockets, Fastify, and NestJS
+- **Unified Validation**: Built-in support for Zod and JSON Schema (AJV)
+- **Interactive Documentation**: Swagger-like UI with a built-in playground to test events
+- **Auto-Mountable Docs**: Mount documentation directly on your API server (e.g., `/docs`)
+- **Plugin System**: Extensible hooks for events, responses, and errors (logging, analytics, monitoring)
+- **SDK Generation**: Generate typed clients for TypeScript, Go, Python, and PHP
+- **Robust Build System**: Built with TypeScript Project References for reliable monorepo development
+- **Enhanced DX**: Automatic port detection, better error schema mapping, and seamless TypeScript contract loading
+- **Mock Server**: Generate realistic mock WebSocket servers with fake data for testing
+- **Deep Contract Validation**: Comprehensive validation of your API contracts
+- **AsyncAPI 3.0 Support**: Export your contracts to AsyncAPI 3.0 specification
+- **Enhanced Linting**: Catch common issues early with improved linting rules
 
 ## Installation
 
@@ -34,8 +38,16 @@ import { z } from "zod";
 
 export const contract = createContract({
   name: "Chat API",
-  version: "0.2.0",
-  description: "A simple realtime chat API"
+  version: "1.0.0",
+  description: "A realtime chat API",
+  security: [
+    {
+      name: "API Key",
+      type: "apiKey",
+      in: "header",
+      description: "API key for authentication"
+    }
+  ]
 });
 
 const chat = contract.namespace("chat");
@@ -43,10 +55,29 @@ const chat = contract.namespace("chat");
 chat.event({
   name: "send_message",
   direction: "client_to_server",
+  summary: "Send a message to a room",
   payload: z.object({
     text: z.string(),
     roomId: z.string()
   })
+}).errors([
+  { code: "INVALID_ROOM", description: "Room does not exist" },
+  { code: "EMPTY_MESSAGE", description: "Message cannot be empty" }
+]);
+
+chat.event({
+  name: "new_message",
+  direction: "server_to_client",
+  summary: "New message received in a room",
+  payload: z.object({
+    id: z.string(),
+    text: z.string(),
+    roomId: z.string(),
+    sender: z.string()
+  }),
+  examples: [
+    { id: "1", text: "Hello!", roomId: "general", sender: "user1" }
+  ]
 });
 ```
 
@@ -61,15 +92,28 @@ const io = new Server(3000);
 
 const handlers = {
   chat: {
-    send_message: async ({ payload, socket }) => {
+    send_message: async ({ payload, socket, auth }) => {
       console.log("Received:", payload.text);
       // Broadcast to others
-      socket.to(payload.roomId).emit("new_message", payload);
+      socket.to(payload.roomId).emit("new_message", {
+        id: Date.now().toString(),
+        text: payload.text,
+        roomId: payload.roomId,
+        sender: auth?.userId || "anonymous"
+      });
     }
   }
 };
 
-bindSocketioAdapter(io, contract, handlers);
+bindSocketioAdapter(io, contract, handlers, {
+  onAuth: async (socket) => {
+    const apiKey = socket.handshake.headers["x-api-key"] as string;
+    if (apiKey) {
+      return { userId: "user1", roles: ["user"] };
+    }
+    return null;
+  }
+});
 ```
 
 ### 3. Generate Documentation
@@ -85,6 +129,12 @@ npx socketdocs generate-spec
 
 # Serve documentation UI
 npx socketdocs serve-docs -p 4000
+
+# Validate your contract
+npx socketdocs validate-contract
+
+# Start a mock server for testing
+npx socketdocs mock-server -p 5000
 ```
 
 ## Testing
@@ -105,8 +155,8 @@ npm test
 ## Documentation UI
 
 The documentation server provides a modern web interface to explore your API:
-- **Explorer**: View all namespaces and events with their schemas.
-- **Playground**: Connect to your running server and test events interactively.
+- **Explorer**: View all namespaces and events with their schemas
+- **Playground**: Connect to your running server and test events interactively
 
 ## SDK Generation
 
@@ -128,7 +178,7 @@ npx socketdocs generate-sdk --lang php -o ./sdk/client.php
 
 ## Contributing
 
-We love contributions! Whether it's adding a new adapter, improving the UI, or **adding support for more SDK languages**, your help is welcome.
+We love contributions! Whether it's adding a new adapter, improving the UI, or adding support for more SDK languages, your help is welcome.
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed instructions on how to get involved.
 
