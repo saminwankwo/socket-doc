@@ -90,10 +90,6 @@ export class SocketDocsModule implements OnModuleInit {
               authRequired: eventOptions.authRequired,
               roles: eventOptions.roles,
             });
-
-            // Wrap the method for validation if needed
-            // This is complex in NestJS as we'd need to intercept the message
-            // Usually done via NestJS Interceptors or Guards
           }
         });
       }

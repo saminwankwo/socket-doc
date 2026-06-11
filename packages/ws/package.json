@@ -1,6 +1,6 @@
 {
  "name": "@socketdocs/ws",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Pure WebSocket (ws) adapter for SocketDocs.",
   "keywords": [
@@ -29,7 +29,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@socketdocs/core": "^0.2.0",
+    "@socketdocs/core": "^0.3.0",
     "ws": "^8.21.0",
     "zod": "^4.4.3"
   }

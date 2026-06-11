@@ -1,6 +1,6 @@
 {
  "name": "@socketdocs/nestjs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "NestJS adapter for SocketDocs, providing decorators for WebSocket documentation.",
   "keywords": [
@@ -30,7 +30,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@socketdocs/core": "^0.2.0",
+    "@socketdocs/core": "^0.3.0",
     "@nestjs/common": "^11.1.24",
     "@nestjs/core": "^11.1.24",
     "@nestjs/websockets": "^11.1.24",

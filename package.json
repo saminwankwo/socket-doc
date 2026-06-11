@@ -1,7 +1,7 @@
 {
   "name": "socketdocs",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OpenAPI-style documentation framework for WebSocket APIs",
   "keywords": [
     "websocket",
@@ -48,7 +48,7 @@
     "globals": "^17.6.0",
     "jest": "^30.4.2",
     "prettier": "^3.8.3",
-    "ts-jest": "^29.4.11",
+    "ts-jest": "^29.4.1",
     "typescript": "^6.0.3"
   }
 }
