@@ -133,8 +133,14 @@ npx socketdocs serve-docs -p 4000
 # Validate your contract
 npx socketdocs validate-contract
 
+# Lint your contract
+npx socketdocs lint
+
 # Start a mock server for testing
 npx socketdocs mock-server -p 5000
+
+# Export as AsyncAPI specification
+npx socketdocs export-asyncapi -o asyncapi.json
 ```
 
 ## Testing
@@ -157,6 +163,38 @@ npm test
 The documentation server provides a modern web interface to explore your API:
 - **Explorer**: View all namespaces and events with their schemas
 - **Playground**: Connect to your running server and test events interactively
+
+## Contract Linting
+
+Lint your contract to catch common issues early:
+
+```bash
+npx socketdocs lint
+```
+
+Linting checks for:
+- Missing documentation
+- Invalid naming conventions
+- Missing payload schemas
+- Missing response schemas for request-response events
+- Duplicate event names
+- Duplicate error codes
+- Missing security requirements when auth is required
+
+## AsyncAPI Export
+
+Export your contract to AsyncAPI 3.0 specification:
+
+```bash
+npx socketdocs export-asyncapi -o asyncapi.json
+```
+
+This exports:
+- All your namespaces and events
+- Server information
+- Security requirements
+- Examples
+- Operations for both sending and receiving messages
 
 ## SDK Generation
 

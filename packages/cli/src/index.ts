@@ -3,8 +3,8 @@ import fs from "fs"
 import path from "path"
 import http from "http"
 import { Command } from "commander"
-import Ajv from "ajv"
-import addFormats from "ajv-formats"
+import AjvModule from "ajv"
+import addFormatsModule from "ajv-formats"
 import { faker } from "@faker-js/faker"
 import { Server } from "socket.io"
 import { TypescriptGenerator } from "./generators/typescript.js"
@@ -15,8 +15,13 @@ import { SdkGenerator } from "./generators/index.js"
 import { generateHtml, lintSpec, convertToAsyncApi, LintIssue } from "@socketdocs/core"
 import jiti from "jiti"
 
+const Ajv = (AjvModule as any).default || AjvModule
+const addFormats = (addFormatsModule as any).default || addFormatsModule
+
 const ajv = new Ajv()
 addFormats(ajv)
+
+const program = new Command()
 
 /**
  * Generate mock data from a JSON schema
@@ -151,7 +156,7 @@ program
   .command("generate-spec")
   .description("Generate documentation from contract")
   .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
-  .action(async (options) => {
+  .action(async (options: any) => {
     const configPath = path.resolve(process.cwd(), options.config)
     if (!fs.existsSync(configPath)) {
       console.error(`Config file not found at ${configPath}`)
@@ -194,7 +199,7 @@ program
   .description("Serve documentation locally")
   .option("-p, --port <number>", "Port to serve on", "4000")
   .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
-  .action((options) => {
+  .action((options: any) => {
     const specPath = path.resolve(process.cwd(), options.spec)
     if (!fs.existsSync(specPath)) {
       console.error(`Spec file not found at ${specPath}`)
@@ -248,7 +253,7 @@ program
   .option("-l, --lang <type>", "SDK language (ts|js|go|py)", "ts")
   .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
   .option("-o, --output <path>", "Output file path", "./socketdocs-sdk")
-  .action((options) => {
+  .action((options: any) => {
     const specPath = path.resolve(process.cwd(), options.spec)
     if (!fs.existsSync(specPath)) {
       console.error(`Spec file not found at ${specPath}`)
@@ -473,7 +478,8 @@ program
 
         // Listen to client-to-server and bidirectional events
         for (const [evtName, evt] of Object.entries((ns as any).events)) {
-          if (evt.direction === "client_to_server" || evt.direction === "bidirectional") {
+          const eventDef = evt as any
+          if (eventDef.direction === "client_to_server" || eventDef.direction === "bidirectional") {
             console.log(`    Listening for event: ${evtName}`)
             
             socket.on(evtName, (payload, ack) => {
@@ -481,8 +487,8 @@ program
 
               // Validate payload if schema exists
               let isValid = true
-              if (evt.payloadSchema) {
-                const validate = ajv.compile(evt.payloadSchema)
+              if (eventDef.payloadSchema) {
+                const validate = ajv.compile(eventDef.payloadSchema)
                 isValid = validate(payload)
                 if (!isValid) {
                   console.error(`  [${nsName}] Invalid payload:`, validate.errors)
@@ -494,8 +500,8 @@ program
               }
 
               // Generate mock response if it's request-response
-              if (evt.type === "request_response" && evt.responseSchema) {
-                const mockResponse = generateMockData(evt.responseSchema)
+              if (eventDef.type === "request_response" && eventDef.responseSchema) {
+                const mockResponse = generateMockData(eventDef.responseSchema)
                 console.log(`  [${nsName}] Sending mock response:`, mockResponse)
                 if (ack) {
                   ack(mockResponse)
@@ -503,9 +509,9 @@ program
               }
 
               // Emit a corresponding server-to-client event if it exists
-              if (evt.direction === "bidirectional") {
-                const mockServerPayload = evt.payloadSchema 
-                  ? generateMockData(evt.payloadSchema) 
+              if (eventDef.direction === "bidirectional") {
+                const mockServerPayload = eventDef.payloadSchema 
+                  ? generateMockData(eventDef.payloadSchema) 
                   : {}
                 console.log(`  [${nsName}] Emitting mock bidirectional response:`, mockServerPayload)
                 socket.emit(evtName, mockServerPayload)
@@ -546,7 +552,7 @@ program
   .command("lint")
   .description("Lint the contract for common mistakes and missing documentation")
   .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
-  .action(async (options) => {
+  .action(async (options: any) => {
     const configPath = path.resolve(process.cwd(), options.config)
     if (!fs.existsSync(configPath)) {
       console.error(`Config file not found at ${configPath}`)
