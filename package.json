@@ -32,7 +32,7 @@
   ],
   "scripts": {
     "clean": "rm -rf packages/*/dist && rm -rf packages/*/tsconfig.tsbuildinfo",
-    "build": "npm run clean && tsc -b && npm run build:docs",
+    "build": "npm run clean && tsc -b",
     "build:docs": "cd packages/docs-server && npm run build || true",
     "test": "npm test --workspaces --if-present",
     "lint": "eslint .",
