@@ -1,7 +1,6 @@
-import AjvModule from "ajv"
+import Ajv from "ajv"
 import { ZodTypeAny } from "zod"
 
-const Ajv = (AjvModule as any).default || AjvModule
 const ajv = new Ajv()
 
 export interface Validator {

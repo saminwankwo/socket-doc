@@ -1,12 +1,31 @@
-import { Server, Socket, Namespace as SocketioNamespace } from "socket.io"
-import { Contract, createValidator } from "@socketdocs/core"
+import { Server, Socket, Namespace as SocketioNamespace } from "socket.io";
+import { Contract, createValidator, EventDefinition } from "@socketdocs/core";
 
 export interface SocketioAdapterOptions {
-  onAuth?: (socket: Socket) => Promise<{ userId?: string; roles?: string[] } | null>
-  logger?: (msg: string) => void
+  onAuth?: (socket: Socket) => Promise<{ userId?: string; roles?: string[] } | null>;
+  logger?: (msg: string) => void;
 }
 
-export function bindSocketioAdapter(io: Server | SocketioNamespace, contract: Contract, handlers: any, opts?: SocketioAdapterOptions) {
+export interface HandlerContext<T = any, U = any> {
+  payload: T;
+  socket: Socket;
+  auth: { userId?: string; roles?: string[] } | null;
+}
+
+export type EventHandler<T = any, U = any> = (
+  ctx: HandlerContext<T, U>
+) => Promise<U> | U;
+
+export type NamespaceHandlers = Record<string, EventHandler>;
+
+export type AdapterHandlers = Record<string, NamespaceHandlers>;
+
+export function bindSocketioAdapter(
+  io: Server | SocketioNamespace,
+  contract: Contract,
+  handlers: AdapterHandlers,
+  opts?: SocketioAdapterOptions
+) {
   // Bind namespaces from the contract to Socket.IO
   for (const [nsName, ns] of contract._namespaces) {
     const isServer = "of" in io
@@ -95,7 +114,12 @@ export function bindSocketioAdapter(io: Server | SocketioNamespace, contract: Co
 
       if (eventDef.direction === "server_to_client" || eventDef.direction === "bidirectional") {
         if (eventDef.payload) {
-          eventDef.payload.parse(payload)
+          const result = eventDef.payload.safeParse(payload)
+          if (!result.success) {
+            contract.plugins.notifyError(eventName, { type: 'payload_validation', error: result.error.issues }, nsName)
+            throw new Error(`Invalid payload for event ${eventName}: ${result.error.message}`)
+          }
+          payload = result.data as T
         }
       }
 

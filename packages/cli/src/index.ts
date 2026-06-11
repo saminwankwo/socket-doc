@@ -3,8 +3,10 @@ import fs from "fs"
 import path from "path"
 import http from "http"
 import { Command } from "commander"
-import AjvModule from "ajv"
-import addFormatsModule from "ajv-formats"
+import Ajv from "ajv"
+import addFormats from "ajv-formats"
+import { faker } from "@faker-js/faker"
+import { Server } from "socket.io"
 import { TypescriptGenerator } from "./generators/typescript.js"
 import { GoGenerator } from "./generators/go.js"
 import { PythonGenerator } from "./generators/python.js"
@@ -13,12 +15,93 @@ import { SdkGenerator } from "./generators/index.js"
 import { generateHtml, lintSpec, convertToAsyncApi, LintIssue } from "@socketdocs/core"
 import jiti from "jiti"
 
-const Ajv = (AjvModule as any).default || AjvModule
-const addFormats = (addFormatsModule as any).default || addFormatsModule
-
-const program = new Command()
 const ajv = new Ajv()
-addFormats(ajv as any)
+addFormats(ajv)
+
+/**
+ * Generate mock data from a JSON schema
+ */
+function generateMockData(schema: any): any {
+  if (!schema) return undefined
+
+  switch (schema.type) {
+    case "string":
+      if (schema.format === "email") return faker.internet.email()
+      if (schema.format === "uri") return faker.internet.url()
+      if (schema.format === "uuid") return faker.string.uuid()
+      if (schema.format === "date-time") return faker.date.anytime().toISOString()
+      if (schema.enum && schema.enum.length > 0) {
+        return faker.helpers.arrayElement(schema.enum)
+      }
+      if (schema.pattern) {
+        // Simple fallback for patterns
+        return faker.string.alphanumeric(10)
+      }
+      const minLength = schema.minLength || 5
+      const maxLength = schema.maxLength || 20
+      return faker.lorem.words(
+        Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength
+      )
+
+    case "number":
+    case "integer":
+      const min = schema.minimum || 0
+      const max = schema.maximum || 100
+      const num = faker.number.int({ min, max })
+      return schema.type === "integer" ? Math.floor(num) : num
+
+    case "boolean":
+      return faker.datatype.boolean()
+
+    case "array":
+      const minItems = schema.minItems || 1
+      const maxItems = schema.maxItems || 5
+      const items = []
+      const count = faker.number.int({ min: minItems, max: maxItems })
+      for (let i = 0; i < count; i++) {
+        items.push(generateMockData(schema.items))
+      }
+      return items
+
+    case "object":
+      const obj: any = {}
+      const required = schema.required || []
+      const properties = schema.properties || {}
+      
+      // Include required properties
+      for (const key of required) {
+        if (properties[key]) {
+          obj[key] = generateMockData(properties[key])
+        }
+      }
+      
+      // Include some optional properties
+      const optionalKeys = Object.keys(properties).filter(k => !required.includes(k))
+      const numOptional = Math.min(
+        optionalKeys.length,
+        faker.number.int({ min: 0, max: optionalKeys.length })
+      )
+      const selectedOptional = faker.helpers.arrayElements(optionalKeys, numOptional)
+      for (const key of selectedOptional) {
+        obj[key] = generateMockData(properties[key])
+      }
+      
+      return obj
+
+    case "null":
+      return null
+
+    default:
+      // If no type specified or it's a union, try to generate something reasonable
+      if (schema.oneOf && schema.oneOf.length > 0) {
+        return generateMockData(faker.helpers.arrayElement(schema.oneOf))
+      }
+      if (schema.anyOf && schema.anyOf.length > 0) {
+        return generateMockData(faker.helpers.arrayElement(schema.anyOf))
+      }
+      return faker.lorem.word()
+  }
+}
 
 program
   .name("socketdocs")
@@ -201,20 +284,156 @@ program
   .description("Validate contract at runtime")
   .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
   .action(async (options) => {
-    // This would perform more deep validation
-    console.log("Validating contract...")
-    // For now we just check if it can be loaded
+    console.log("🔍 Validating contract...")
     const configPath = path.resolve(process.cwd(), options.config)
+    
+    if (!fs.existsSync(configPath)) {
+      console.error(`❌ Config file not found at ${configPath}`)
+      process.exit(1)
+    }
+
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
     const contractFilePath = path.resolve(process.cwd(), config.contractFile)
     
     try {
       const load = jiti(import.meta.url, { interopDefault: true })
       const contract = load(contractFilePath)
-      if (!contract) throw new Error("Contract not found")
-      console.log("Contract is valid.")
+      
+      if (!contract) {
+        throw new Error("Contract not found - make sure your contract file exports the contract object")
+      }
+
+      const issues: { type: "error" | "warning"; message: string; path?: string }[] = []
+      
+      // Validate contract structure
+      if (typeof contract !== "object") {
+        issues.push({ type: "error", message: "Contract must be an object" })
+      }
+      
+      if (!contract._namespaces) {
+        issues.push({ type: "error", message: "Contract is missing _namespaces property" })
+      } else if (!(contract._namespaces instanceof Map)) {
+        issues.push({ type: "error", message: "_namespaces must be a Map object" })
+      }
+      
+      if (typeof contract.generateSpec !== "function") {
+        issues.push({ type: "error", message: "Contract is missing generateSpec method" })
+      }
+      
+      if (!contract.options) {
+        issues.push({ type: "warning", message: "Contract is missing options property" })
+      } else {
+        if (!contract.options.name) {
+          issues.push({ type: "warning", message: "Contract options.name is missing", path: "options.name" })
+        }
+        if (!contract.options.version) {
+          issues.push({ type: "warning", message: "Contract options.version is missing", path: "options.version" })
+        }
+      }
+      
+      // Validate namespaces
+      if (contract._namespaces) {
+        if (contract._namespaces.size === 0) {
+          issues.push({ type: "warning", message: "Contract has no namespaces defined" })
+        }
+        
+        for (const [nsName, ns] of contract._namespaces) {
+          if (!ns.events || typeof ns !== "object") {
+            issues.push({ type: "error", message: `Namespace ${nsName} is invalid`, path: `namespaces.${nsName}` })
+            continue
+          }
+          
+          if (!ns.events || !(ns.events instanceof Map)) {
+            issues.push({ type: "error", message: `Namespace ${nsName}.events must be a Map`, path: `namespaces.${nsName}.events` })
+            continue
+          }
+          
+          if (ns.events.size === 0) {
+            issues.push({ type: "warning", message: `Namespace ${nsName} has no events defined`, path: `namespaces.${nsName}` })
+          }
+          
+          // Validate events
+          for (const [evtName, evt] of ns.events) {
+            const evtPath = `namespaces.${nsName}.events.${evtName}`
+            
+            if (!evt.name || typeof evt !== "object") {
+              issues.push({ type: "error", message: `Event ${evtName} is invalid`, path: evtPath })
+              continue
+            }
+            
+            if (!evt.direction) {
+              issues.push({ type: "error", message: `Event ${evtName} is missing direction`, path: `${evtPath}.direction` })
+            } else if (!["client_to_server", "server_to_client", "bidirectional"].includes(evt.direction)) {
+              issues.push({ type: "error", message: `Event ${evtName} has invalid direction: ${evt.direction}`, path: `${evtPath}.direction` })
+            }
+            
+            if (evt.type && !["fire_and_forget", "request_response"].includes(evt.type)) {
+              issues.push({ type: "warning", message: `Event ${evtName} has invalid type: ${evt.type}`, path: `${evtPath}.type` })
+            }
+            
+            // Validate that request_response events have response schemas
+            if (evt.type === "request_response" && !evt.response && !evt.responseSchema) {
+              issues.push({ type: "warning", message: `Request-response event ${evtName} should have a response schema`, path: evtPath })
+            }
+            
+            // Validate errors
+            if (evt.errors) {
+              if (!Array.isArray(evt.errors)) {
+                issues.push({ type: "error", message: `Event ${evtName}.errors must be an array`, path: `${evtPath}.errors` })
+              } else {
+                for (let i = 0; i < evt.errors.length; i++) {
+                  const err = evt.errors[i]
+                  if (!err.code) {
+                    issues.push({ type: "error", message: `Error ${i} for event ${evtName} is missing code`, path: `${evtPath}.errors[${i}].code` })
+                  }
+                  if (!err.description) {
+                    issues.push({ type: "warning", message: `Error ${i} for event ${evtName} is missing description`, path: `${evtPath}.errors[${i}].description` })
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Try to generate spec to ensure it works
+      try {
+        const spec = contract.generateSpec()
+        if (!spec) {
+          issues.push({ type: "error", message: "generateSpec returned null or undefined" })
+        } else {
+          console.log("✅ generateSpec works correctly")
+        }
+        // Also run the linter on the generated spec
+        const lintIssues = lintSpec(spec)
+        for (const issue of lintIssues) {
+          issues.push(issue)
+        }
+      } catch (err) {
+        issues.push({ type: "error", message: `generateSpec failed: ${(err as Error).message}` })
+      }
+      
+      // Report results
+      if (issues.length === 0) {
+        console.log("\n✅ Contract is valid!")
+        return
+      }
+      
+      console.log(`\nFound ${issues.length} issue(s):`)
+      let hasErrors = false
+      
+      for (const issue of issues) {
+        const icon = issue.type === "error" ? "❌" : "⚠️"
+        console.log(`  ${icon} ${issue.message}${issue.path ? ` (${issue.path})` : ""}`)
+        if (issue.type === "error") hasErrors = true
+      }
+      
+      if (hasErrors) {
+        process.exit(1)
+      }
+      
     } catch (err) {
-      console.error("Contract validation failed:", err)
+      console.error("\n❌ Contract validation failed:", (err as Error).message)
       process.exit(1)
     }
   })
@@ -232,12 +451,95 @@ program
     }
 
     const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
-    console.log(`Starting mock server for ${spec.info.name} on port ${options.port}...`)
-    
-    // In a real implementation, we would use a library like 'mockjs' or similar
-    // to generate random data based on JSON Schema.
-    // For now, we'll just log that it's starting.
-    console.log("Mock server is ready. (Mock data generation placeholder)")
+    const port = parseInt(options.port)
+    console.log(`Starting mock server for ${spec.info.name} on port ${port}...`)
+
+    const httpServer = http.createServer()
+    const io = new Server(httpServer, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+      }
+    })
+
+    // Set up namespaces
+    for (const [nsName, ns] of Object.entries(spec.namespaces)) {
+      const namespace = nsName === "default" ? io : io.of(`/${nsName}`)
+      
+      console.log(`  Setting up namespace: /${nsName === "default" ? "" : nsName}`)
+      
+      namespace.on("connection", (socket) => {
+        console.log(`  [${nsName}] Client connected: ${socket.id}`)
+
+        // Listen to client-to-server and bidirectional events
+        for (const [evtName, evt] of Object.entries((ns as any).events)) {
+          if (evt.direction === "client_to_server" || evt.direction === "bidirectional") {
+            console.log(`    Listening for event: ${evtName}`)
+            
+            socket.on(evtName, (payload, ack) => {
+              console.log(`  [${nsName}] Received event: ${evtName}`, payload)
+
+              // Validate payload if schema exists
+              let isValid = true
+              if (evt.payloadSchema) {
+                const validate = ajv.compile(evt.payloadSchema)
+                isValid = validate(payload)
+                if (!isValid) {
+                  console.error(`  [${nsName}] Invalid payload:`, validate.errors)
+                  if (ack) {
+                    ack({ status: "error", message: "Invalid payload", errors: validate.errors })
+                  }
+                  return
+                }
+              }
+
+              // Generate mock response if it's request-response
+              if (evt.type === "request_response" && evt.responseSchema) {
+                const mockResponse = generateMockData(evt.responseSchema)
+                console.log(`  [${nsName}] Sending mock response:`, mockResponse)
+                if (ack) {
+                  ack(mockResponse)
+                }
+              }
+
+              // Emit a corresponding server-to-client event if it exists
+              if (evt.direction === "bidirectional") {
+                const mockServerPayload = evt.payloadSchema 
+                  ? generateMockData(evt.payloadSchema) 
+                  : {}
+                console.log(`  [${nsName}] Emitting mock bidirectional response:`, mockServerPayload)
+                socket.emit(evtName, mockServerPayload)
+              }
+
+              // Emit random server-to-client events periodically
+              const serverEvents = Object.entries((ns as any).events).filter(
+                ([_, e]: [string, any]) => e.direction === "server_to_client"
+              )
+              if (serverEvents.length > 0) {
+                const randomDelay = faker.number.int({ min: 1000, max: 5000 })
+                setTimeout(() => {
+                  const [randomEventName, randomEvent] = faker.helpers.arrayElement(serverEvents)
+                  const mockEventData = (randomEvent as any).payloadSchema 
+                    ? generateMockData((randomEvent as any).payloadSchema) 
+                    : {}
+                  console.log(`  [${nsName}] Emitting mock server event: ${randomEventName}`, mockEventData)
+                  socket.emit(randomEventName, mockEventData)
+                }, randomDelay)
+              }
+            })
+          }
+        }
+
+        socket.on("disconnect", () => {
+          console.log(`  [${nsName}] Client disconnected: ${socket.id}`)
+        })
+      })
+    }
+
+    httpServer.listen(port, () => {
+      console.log(`\n✅ Mock server is running at http://localhost:${port}`)
+      console.log(`   Connect with Socket.IO client to start testing!`)
+    })
   })
 
 program
