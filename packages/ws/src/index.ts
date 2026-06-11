@@ -1,9 +1,32 @@
 import { WebSocketServer, WebSocket } from "ws"
-import { Contract, createValidator } from "@socketdocs/core"
+import { Contract, createValidator, generateHtml } from "@socketdocs/core"
+import { IncomingMessage, ServerResponse } from "http"
 
 export interface WsAdapterOptions {
   onAuth?: (socket: WebSocket, request: any) => Promise<{ userId?: string; roles?: string[] } | null>
   logger?: (msg: string) => void
+}
+
+/**
+ * Helper to serve documentation from a standard HTTP server
+ */
+export function handleWsDocs(req: IncomingMessage, res: ServerResponse, contract: Contract, path: string = "/docs") {
+  const url = req.url || ""
+  const spec = contract.generateSpec()
+
+  if (url === path) {
+    res.setHeader("Content-Type", "text/html")
+    res.end(generateHtml(spec))
+    return true
+  }
+
+  if (url === `${path}/spec`) {
+    res.setHeader("Content-Type", "application/json")
+    res.end(JSON.stringify(spec))
+    return true
+  }
+
+  return false
 }
 
 export function bindWsAdapter(wss: WebSocketServer, contract: Contract, handlers: any, opts?: WsAdapterOptions) {
@@ -12,7 +35,7 @@ export function bindWsAdapter(wss: WebSocketServer, contract: Contract, handlers
     if (opts?.onAuth) {
       try {
         authCtx = await opts.onAuth(socket, request)
-      } catch (err) {
+      } catch (_err) {
         socket.close(1008, "Unauthorized")
         return
       }

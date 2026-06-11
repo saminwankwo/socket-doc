@@ -3,17 +3,114 @@ import fs from "fs"
 import path from "path"
 import http from "http"
 import { Command } from "commander"
-import Ajv from "ajv"
-import addFormats from "ajv-formats"
-import { TypescriptGenerator } from "./generators/typescript"
-import { GoGenerator } from "./generators/go"
-import { PythonGenerator } from "./generators/python"
-import { PhpGenerator } from "./generators/php"
-import { SdkGenerator } from "./generators"
+import AjvModule from "ajv"
+import addFormatsModule from "ajv-formats"
+import { faker } from "@faker-js/faker"
+import { Server } from "socket.io"
+import { TypescriptGenerator } from "./generators/typescript.js"
+import { GoGenerator } from "./generators/go.js"
+import { PythonGenerator } from "./generators/python.js"
+import { PhpGenerator } from "./generators/php.js"
+import { SdkGenerator } from "./generators/index.js"
+import { generateHtml, lintSpec, convertToAsyncApi, LintIssue } from "@socketdocs/core"
+import jiti from "jiti"
+
+const Ajv = (AjvModule as any).default || AjvModule
+const addFormats = (addFormatsModule as any).default || addFormatsModule
+
+const ajv = new Ajv()
+addFormats(ajv)
 
 const program = new Command()
-const ajv = new Ajv()
-addFormats(ajv as any)
+
+/**
+ * Generate mock data from a JSON schema
+ */
+function generateMockData(schema: any): any {
+  if (!schema) return undefined
+
+  switch (schema.type) {
+    case "string": {
+      if (schema.format === "email") return faker.internet.email()
+      if (schema.format === "uri") return faker.internet.url()
+      if (schema.format === "uuid") return faker.string.uuid()
+      if (schema.format === "date-time") return faker.date.anytime().toISOString()
+      if (schema.enum && schema.enum.length > 0) {
+        return faker.helpers.arrayElement(schema.enum)
+      }
+      if (schema.pattern) {
+        // Simple fallback for patterns
+        return faker.string.alphanumeric(10)
+      }
+      const minLength = schema.minLength || 5
+      const maxLength = schema.maxLength || 20
+      return faker.lorem.words(
+        Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength
+      )
+    }
+
+    case "number":
+    case "integer": {
+      const min = schema.minimum || 0
+      const max = schema.maximum || 100
+      const num = faker.number.int({ min, max })
+      return schema.type === "integer" ? Math.floor(num) : num
+    }
+
+    case "boolean":
+      return faker.datatype.boolean()
+
+    case "array": {
+      const minItems = schema.minItems || 1
+      const maxItems = schema.maxItems || 5
+      const items = []
+      const count = faker.number.int({ min: minItems, max: maxItems })
+      for (let i = 0; i < count; i++) {
+        items.push(generateMockData(schema.items))
+      }
+      return items
+    }
+
+    case "object": {
+      const obj: any = {}
+      const required = schema.required || []
+      const properties = schema.properties || {}
+      
+      // Include required properties
+      for (const key of required) {
+        if (properties[key]) {
+          obj[key] = generateMockData(properties[key])
+        }
+      }
+      
+      // Include some optional properties
+      const optionalKeys = Object.keys(properties).filter(k => !required.includes(k))
+      const numOptional = Math.min(
+        optionalKeys.length,
+        faker.number.int({ min: 0, max: optionalKeys.length })
+      )
+      const selectedOptional = faker.helpers.arrayElements(optionalKeys, numOptional)
+      for (const key of selectedOptional) {
+        obj[key] = generateMockData(properties[key])
+      }
+      
+      return obj
+    }
+
+    case "null":
+      return null
+
+    default:
+      // If no type specified or it's a union, try to generate something reasonable
+      if (schema.oneOf && schema.oneOf.length > 0) {
+        return generateMockData(faker.helpers.arrayElement(schema.oneOf))
+      }
+      if (schema.anyOf && schema.anyOf.length > 0) {
+        return generateMockData(faker.helpers.arrayElement(schema.anyOf))
+      }
+      return faker.lorem.word()
+  }
+}
 
 program
   .name("socketdocs")
@@ -63,7 +160,7 @@ program
   .command("generate-spec")
   .description("Generate documentation from contract")
   .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
-  .action(async (options) => {
+  .action(async (options: any) => {
     const configPath = path.resolve(process.cwd(), options.config)
     if (!fs.existsSync(configPath)) {
       console.error(`Config file not found at ${configPath}`)
@@ -85,17 +182,8 @@ program
     console.log(`Reading contract from ${contractFilePath}...`)
     
     try {
-      // In a real CLI, we would use ts-node/register to load the contract
-      // For this implementation, we require the file. 
-      // If it's TS, we assume it's pre-compiled or we use ts-node
-      if (contractFilePath.endsWith(".ts")) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        require("ts-node").register()
-      }
-      
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require(contractFilePath)
-      const contract = mod.contract || mod.default
+      const load = jiti(import.meta.url, { interopDefault: true })
+      const contract = load(contractFilePath)
       
       if (!contract || typeof contract.generateSpec !== "function") {
         throw new Error("Contract file must export a 'contract' object created with createContract()")
@@ -115,7 +203,7 @@ program
   .description("Serve documentation locally")
   .option("-p, --port <number>", "Port to serve on", "4000")
   .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
-  .action((options) => {
+  .action((options: any) => {
     const specPath = path.resolve(process.cwd(), options.spec)
     if (!fs.existsSync(specPath)) {
       console.error(`Spec file not found at ${specPath}`)
@@ -123,167 +211,44 @@ program
     }
 
     const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
-    const server = http.createServer((req, res) => {
-      // CORS
-      res.setHeader("Access-Control-Allow-Origin", "*")
-      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type")
-      
-      if (req.method === "OPTIONS") {
-        res.end()
-        return
-      }
+    
+    const startServer = (port: number) => {
+      const server = http.createServer((req, res) => {
+        // CORS
+        res.setHeader("Access-Control-Allow-Origin", "*")
+        res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type")
+        
+        if (req.method === "OPTIONS") {
+          res.end()
+          return
+        }
 
-      if (req.url === "/api/spec") {
-        res.setHeader("Content-Type", "application/json")
-        res.end(JSON.stringify(spec, null, 2))
-        return
-      }
+        if (req.url === "/api/spec") {
+          res.setHeader("Content-Type", "application/json")
+          res.end(JSON.stringify(spec, null, 2))
+          return
+        }
 
-      res.setHeader("Content-Type", "text/html")
-      res.end(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SocketDocs Explorer - ${spec.info.name}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-    body { font-family: 'Inter', sans-serif; }
-    pre, code { font-family: 'JetBrains Mono', monospace; }
-  </style>
-</head>
-<body class="bg-slate-950 text-slate-200">
-  <div class="flex min-h-screen">
-    <!-- Sidebar -->
-    <aside class="w-72 border-r border-slate-800 bg-slate-900/50 backdrop-blur-xl sticky top-0 h-screen overflow-y-auto">
-      <div class="p-6">
-        <div class="flex items-center gap-3 mb-10">
-          <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          </div>
-          <h1 class="font-bold text-xl tracking-tight text-white">SocketDocs</h1>
-        </div>
+        res.setHeader("Content-Type", "text/html")
+        res.end(generateHtml(spec))
+      })
 
-        <div class="space-y-8">
-          ${Object.entries(spec.namespaces).map(([name, ns]: [string, any]) => `
-            <div>
-              <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 px-2">Namespace: ${name}</h2>
-              <div class="space-y-1">
-                ${Object.keys(ns.events).map(evtName => `
-                  <a href="#${name}-${evtName}" class="block px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all truncate">
-                    ${evtName}
-                  </a>
-                `).join("")}
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </aside>
+      server.on("error", (err: any) => {
+        if (err.code === "EADDRINUSE") {
+          console.log(`Port ${port} is in use, trying ${port + 1}...`)
+          startServer(port + 1)
+        } else {
+          console.error("Server error:", err)
+        }
+      })
 
-    <!-- Content -->
-    <main class="flex-1 p-12 max-w-5xl mx-auto overflow-x-hidden">
-      <header className="mb-16">
-        <div className="flex items-center gap-3 mb-4">
-          <span class="px-2 py-1 bg-blue-600/10 text-blue-400 text-xs font-mono font-bold rounded border border-blue-500/20">v${spec.info.version}</span>
-          <span class="text-slate-600">/</span>
-          <span class="text-slate-400 font-mono text-xs">spec v${spec.specVersion}</span>
-        </div>
-        <h1 class="text-5xl font-extrabold text-white mb-6 tracking-tight">${spec.info.name}</h1>
-        <p class="text-xl text-slate-400 leading-relaxed max-w-3xl">${spec.info.description || "No description provided."}</p>
-      </header>
+      server.listen(port, () => {
+        console.log(`SocketDocs Spec Server running at http://localhost:${port}`)
+      })
+    }
 
-      <div class="space-y-24">
-        ${Object.entries(spec.namespaces).map(([nsName, ns]: [string, any]) => `
-          <section id="ns-${nsName}">
-            <div class="flex items-center gap-4 mb-10 pb-4 border-b border-slate-800">
-              <h2 class="text-2xl font-bold text-white uppercase tracking-tight">${nsName}</h2>
-              <span class="text-slate-500 text-sm">Namespace</span>
-            </div>
-            
-            <div class="grid gap-10">
-              ${Object.entries(ns.events).map(([evtName, event]: [string, any]) => `
-                <div id="${nsName}-${evtName}" class="group relative bg-slate-900/30 border border-slate-800 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all duration-300 shadow-xl shadow-black/20">
-                  <div class="p-8">
-                    <div class="flex items-start justify-between mb-6">
-                      <div>
-                        <div class="flex items-center gap-3 mb-3">
-                          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
-                            event.direction === 'client_to_server' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                            event.direction === 'server_to_client' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
-                            'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                          }">
-                            ${event.direction.replace(/_/g, " ")}
-                          </span>
-                          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-slate-800 text-slate-400 border border-slate-700">
-                            ${event.type.replace(/_/g, " ")}
-                          </span>
-                          ${event.authRequired ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-amber-500/10 text-amber-400 border border-amber-500/20">AUTH</span>' : ""}
-                        </div>
-                        <h3 class="text-2xl font-bold text-white tracking-tight">${evtName}</h3>
-                      </div>
-                      <a href="#${nsName}-${evtName}" class="p-2 text-slate-600 hover:text-blue-400 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                      </a>
-                    </div>
-                    
-                    <p class="text-slate-400 text-lg mb-8">${event.summary || event.description || "No description provided."}</p>
-
-                    <div class="grid lg:grid-cols-2 gap-8">
-                      ${event.payloadSchema ? `
-                        <div class="space-y-3">
-                          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Payload Schema</h4>
-                          <div class="relative group">
-                            <pre class="rounded-xl overflow-hidden text-xs"><code class="language-json">${JSON.stringify(event.payloadSchema, null, 2)}</code></pre>
-                            <button onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText)" class="absolute top-3 right-3 p-2 bg-slate-800 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:text-white">
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                            </button>
-                          </div>
-                        </div>
-                      ` : ""}
-                      ${event.responseSchema ? `
-                        <div class="space-y-3">
-                          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Response Schema</h4>
-                          <div class="relative group">
-                            <pre class="rounded-xl overflow-hidden text-xs"><code class="language-json">${JSON.stringify(event.responseSchema, null, 2)}</code></pre>
-                            <button onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText)" class="absolute top-3 right-3 p-2 bg-slate-800 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:text-white">
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                            </button>
-                          </div>
-                        </div>
-                      ` : ""}
-                    </div>
-                  </div>
-                </div>
-              `).join("")}
-            </div>
-          </section>
-        `).join("")}
-      </div>
-
-      <footer class="mt-32 pt-12 border-t border-slate-800 text-slate-600 text-sm flex items-center justify-between">
-        <p>&copy; 2024 SocketDocs. Built for senior-grade WebSocket development.</p>
-        <div class="flex items-center gap-6">
-          <a href="#" class="hover:text-blue-400 transition-colors">Documentation</a>
-          <a href="#" class="hover:text-blue-400 transition-colors">GitHub</a>
-        </div>
-      </footer>
-    </main>
-  </div>
-  <script>hljs.highlightAll();</script>
-</body>
-</html>
-      `)
-    })
-
-    server.listen(options.port, () => {
-      console.log(`SocketDocs Spec Server running at http://localhost:${options.port}`)
-    })
+    startServer(parseInt(options.port))
   })
 
 program
@@ -292,7 +257,7 @@ program
   .option("-l, --lang <type>", "SDK language (ts|js|go|py)", "ts")
   .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
   .option("-o, --output <path>", "Output file path", "./socketdocs-sdk")
-  .action((options) => {
+  .action((options: any) => {
     const specPath = path.resolve(process.cwd(), options.spec)
     if (!fs.existsSync(specPath)) {
       console.error(`Spec file not found at ${specPath}`)
@@ -328,25 +293,156 @@ program
   .description("Validate contract at runtime")
   .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
   .action(async (options) => {
-    // This would perform more deep validation
-    console.log("Validating contract...")
-    // For now we just check if it can be loaded
+    console.log("🔍 Validating contract...")
     const configPath = path.resolve(process.cwd(), options.config)
+    
+    if (!fs.existsSync(configPath)) {
+      console.error(`❌ Config file not found at ${configPath}`)
+      process.exit(1)
+    }
+
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
     const contractFilePath = path.resolve(process.cwd(), config.contractFile)
     
     try {
-      if (contractFilePath.endsWith(".ts")) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        require("ts-node").register()
+      const load = jiti(import.meta.url, { interopDefault: true })
+      const contract = load(contractFilePath)
+      
+      if (!contract) {
+        throw new Error("Contract not found - make sure your contract file exports the contract object")
       }
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require(contractFilePath)
-      const contract = mod.contract || mod.default
-      if (!contract) throw new Error("Contract not found")
-      console.log("Contract is valid.")
+
+      const issues: { type: "error" | "warning"; message: string; path?: string }[] = []
+      
+      // Validate contract structure
+      if (typeof contract !== "object") {
+        issues.push({ type: "error", message: "Contract must be an object" })
+      }
+      
+      if (!contract._namespaces) {
+        issues.push({ type: "error", message: "Contract is missing _namespaces property" })
+      } else if (!(contract._namespaces instanceof Map)) {
+        issues.push({ type: "error", message: "_namespaces must be a Map object" })
+      }
+      
+      if (typeof contract.generateSpec !== "function") {
+        issues.push({ type: "error", message: "Contract is missing generateSpec method" })
+      }
+      
+      if (!contract.options) {
+        issues.push({ type: "warning", message: "Contract is missing options property" })
+      } else {
+        if (!contract.options.name) {
+          issues.push({ type: "warning", message: "Contract options.name is missing", path: "options.name" })
+        }
+        if (!contract.options.version) {
+          issues.push({ type: "warning", message: "Contract options.version is missing", path: "options.version" })
+        }
+      }
+      
+      // Validate namespaces
+      if (contract._namespaces) {
+        if (contract._namespaces.size === 0) {
+          issues.push({ type: "warning", message: "Contract has no namespaces defined" })
+        }
+        
+        for (const [nsName, ns] of contract._namespaces) {
+          if (!ns.events || typeof ns !== "object") {
+            issues.push({ type: "error", message: `Namespace ${nsName} is invalid`, path: `namespaces.${nsName}` })
+            continue
+          }
+          
+          if (!ns.events || !(ns.events instanceof Map)) {
+            issues.push({ type: "error", message: `Namespace ${nsName}.events must be a Map`, path: `namespaces.${nsName}.events` })
+            continue
+          }
+          
+          if (ns.events.size === 0) {
+            issues.push({ type: "warning", message: `Namespace ${nsName} has no events defined`, path: `namespaces.${nsName}` })
+          }
+          
+          // Validate events
+          for (const [evtName, evt] of ns.events) {
+            const evtPath = `namespaces.${nsName}.events.${evtName}`
+            
+            if (!evt.name || typeof evt !== "object") {
+              issues.push({ type: "error", message: `Event ${evtName} is invalid`, path: evtPath })
+              continue
+            }
+            
+            if (!evt.direction) {
+              issues.push({ type: "error", message: `Event ${evtName} is missing direction`, path: `${evtPath}.direction` })
+            } else if (!["client_to_server", "server_to_client", "bidirectional"].includes(evt.direction)) {
+              issues.push({ type: "error", message: `Event ${evtName} has invalid direction: ${evt.direction}`, path: `${evtPath}.direction` })
+            }
+            
+            if (evt.type && !["fire_and_forget", "request_response"].includes(evt.type)) {
+              issues.push({ type: "warning", message: `Event ${evtName} has invalid type: ${evt.type}`, path: `${evtPath}.type` })
+            }
+            
+            // Validate that request_response events have response schemas
+            if (evt.type === "request_response" && !evt.response && !evt.responseSchema) {
+              issues.push({ type: "warning", message: `Request-response event ${evtName} should have a response schema`, path: evtPath })
+            }
+            
+            // Validate errors
+            if (evt.errors) {
+              if (!Array.isArray(evt.errors)) {
+                issues.push({ type: "error", message: `Event ${evtName}.errors must be an array`, path: `${evtPath}.errors` })
+              } else {
+                for (let i = 0; i < evt.errors.length; i++) {
+                  const err = evt.errors[i]
+                  if (!err.code) {
+                    issues.push({ type: "error", message: `Error ${i} for event ${evtName} is missing code`, path: `${evtPath}.errors[${i}].code` })
+                  }
+                  if (!err.description) {
+                    issues.push({ type: "warning", message: `Error ${i} for event ${evtName} is missing description`, path: `${evtPath}.errors[${i}].description` })
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Try to generate spec to ensure it works
+      try {
+        const spec = contract.generateSpec()
+        if (!spec) {
+          issues.push({ type: "error", message: "generateSpec returned null or undefined" })
+        } else {
+          console.log("✅ generateSpec works correctly")
+        }
+        // Also run the linter on the generated spec
+        const lintIssues = lintSpec(spec)
+        for (const issue of lintIssues) {
+          issues.push(issue)
+        }
+      } catch (err) {
+        issues.push({ type: "error", message: `generateSpec failed: ${(err as Error).message}` })
+      }
+      
+      // Report results
+      if (issues.length === 0) {
+        console.log("\n✅ Contract is valid!")
+        return
+      }
+      
+      console.log(`\nFound ${issues.length} issue(s):`)
+      let hasErrors = false
+      
+      for (const issue of issues) {
+        const icon = issue.type === "error" ? "❌" : "⚠️"
+        console.log(`  ${icon} ${issue.message}${issue.path ? ` (${issue.path})` : ""}`)
+        if (issue.type === "error") hasErrors = true
+      }
+      
+      if (hasErrors) {
+        process.exit(1)
+      }
+      
     } catch (err) {
-      console.error("Contract validation failed:", err)
+      console.error("\n❌ Contract validation failed:", (err as Error).message)
       process.exit(1)
     }
   })
@@ -364,12 +460,155 @@ program
     }
 
     const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
-    console.log(`Starting mock server for ${spec.info.name} on port ${options.port}...`)
+    const port = parseInt(options.port)
+    console.log(`Starting mock server for ${spec.info.name} on port ${port}...`)
+
+    const httpServer = http.createServer()
+    const io = new Server(httpServer, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+      }
+    })
+
+    // Set up namespaces
+    for (const [nsName, ns] of Object.entries(spec.namespaces)) {
+      const namespace = nsName === "default" ? io : io.of(`/${nsName}`)
+      
+      console.log(`  Setting up namespace: /${nsName === "default" ? "" : nsName}`)
+      
+      namespace.on("connection", (socket) => {
+        console.log(`  [${nsName}] Client connected: ${socket.id}`)
+
+        // Listen to client-to-server and bidirectional events
+        for (const [evtName, evt] of Object.entries((ns as any).events)) {
+          const eventDef = evt as any
+          if (eventDef.direction === "client_to_server" || eventDef.direction === "bidirectional") {
+            console.log(`    Listening for event: ${evtName}`)
+            
+            socket.on(evtName, (payload, ack) => {
+              console.log(`  [${nsName}] Received event: ${evtName}`, payload)
+
+              // Validate payload if schema exists
+              if (eventDef.payloadSchema) {
+                const validate = ajv.compile(eventDef.payloadSchema)
+                const isValid = validate(payload)
+                if (!isValid) {
+                  console.error(`  [${nsName}] Invalid payload:`, validate.errors)
+                  if (ack) {
+                    ack({ status: "error", message: "Invalid payload", errors: validate.errors })
+                  }
+                  return
+                }
+              }
+
+              // Generate mock response if it's request-response
+              if (eventDef.type === "request_response" && eventDef.responseSchema) {
+                const mockResponse = generateMockData(eventDef.responseSchema)
+                console.log(`  [${nsName}] Sending mock response:`, mockResponse)
+                if (ack) {
+                  ack(mockResponse)
+                }
+              }
+
+              // Emit a corresponding server-to-client event if it exists
+              if (eventDef.direction === "bidirectional") {
+                const mockServerPayload = eventDef.payloadSchema 
+                  ? generateMockData(eventDef.payloadSchema) 
+                  : {}
+                console.log(`  [${nsName}] Emitting mock bidirectional response:`, mockServerPayload)
+                socket.emit(evtName, mockServerPayload)
+              }
+
+              // Emit random server-to-client events periodically
+              const serverEvents = Object.entries((ns as any).events).filter(
+                ([_, e]: [string, any]) => e.direction === "server_to_client"
+              )
+              if (serverEvents.length > 0) {
+                const randomDelay = faker.number.int({ min: 1000, max: 5000 })
+                setTimeout(() => {
+                  const [randomEventName, randomEvent] = faker.helpers.arrayElement(serverEvents)
+                  const mockEventData = (randomEvent as any).payloadSchema 
+                    ? generateMockData((randomEvent as any).payloadSchema) 
+                    : {}
+                  console.log(`  [${nsName}] Emitting mock server event: ${randomEventName}`, mockEventData)
+                  socket.emit(randomEventName, mockEventData)
+                }, randomDelay)
+              }
+            })
+          }
+        }
+
+        socket.on("disconnect", () => {
+          console.log(`  [${nsName}] Client disconnected: ${socket.id}`)
+        })
+      })
+    }
+
+    httpServer.listen(port, () => {
+      console.log(`\n✅ Mock server is running at http://localhost:${port}`)
+      console.log(`   Connect with Socket.IO client to start testing!`)
+    })
+  })
+
+program
+  .command("lint")
+  .description("Lint the contract for common mistakes and missing documentation")
+  .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
+  .action(async (options: any) => {
+    const configPath = path.resolve(process.cwd(), options.config)
+    if (!fs.existsSync(configPath)) {
+      console.error(`Config file not found at ${configPath}`)
+      process.exit(1)
+    }
+
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
+    const contractFilePath = path.resolve(process.cwd(), config.contractFile)
+
+    try {
+      const load = jiti(import.meta.url, { interopDefault: true })
+      const contract = load(contractFilePath)
+      const spec = contract.generateSpec()
+      
+      const issues = lintSpec(spec)
+      
+      if (issues.length === 0) {
+        console.log("✅ No issues found in contract.")
+        return
+      }
+
+      console.log(`Found ${issues.length} issues:`)
+      issues.forEach((issue: LintIssue) => {
+        const icon = issue.type === 'error' ? '❌' : '⚠️'
+        console.log(`${icon} [${issue.path}] ${issue.message}`)
+      })
+
+      if (issues.some((i: LintIssue) => i.type === 'error')) {
+        process.exit(1)
+      }
+    } catch (err) {
+      console.error("Error linting contract:", err)
+      process.exit(1)
+    }
+  })
+
+program
+  .command("export-asyncapi")
+  .description("Export the contract as an AsyncAPI specification")
+  .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
+  .option("-o, --output <path>", "Output file path", "./asyncapi.json")
+  .action((options) => {
+    const specPath = path.resolve(process.cwd(), options.spec)
+    if (!fs.existsSync(specPath)) {
+      console.error(`Spec file not found at ${specPath}`)
+      process.exit(1)
+    }
+
+    const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
+    const asyncApi = convertToAsyncApi(spec)
     
-    // In a real implementation, we would use a library like 'mockjs' or similar
-    // to generate random data based on JSON Schema.
-    // For now, we'll just log that it's starting.
-    console.log("Mock server is ready. (Mock data generation placeholder)")
+    fs.writeFileSync(options.output, JSON.stringify(asyncApi, null, 2))
+    console.log(`AsyncAPI specification exported to ${options.output}`)
   })
 
 program.parse(process.argv)

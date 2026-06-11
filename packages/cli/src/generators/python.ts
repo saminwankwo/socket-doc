@@ -1,4 +1,4 @@
-import { SdkGenerator } from "./index";
+import { SdkGenerator } from "./index.js";
 
 export class PythonGenerator implements SdkGenerator {
   getFileExtension(): string {

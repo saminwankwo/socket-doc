@@ -16,7 +16,7 @@ npm install @socketdocs/fastify @socketdocs/core fastify @fastify/websocket zod
 import { createContract } from '@socketdocs/core';
 import { z } from 'zod';
 
-const contract = createContract({ name: 'Fastify API', version: '1.0.0' });
+const contract = createContract({ name: 'Fastify API', version: '0.2.0' });
 contract.namespace('default').event({
   name: 'greet',
   direction: 'client_to_server',
@@ -48,12 +48,17 @@ fastify.ready((err) => {
   bindFastifyAdapter(fastify, contract, handlers);
 });
 
+// 3. (Optional) Serve Interactive Documentation UI
+import { serveFastifyDocs } from '@socketdocs/fastify';
+serveFastifyDocs(fastify, contract, '/docs');
+
 fastify.listen({ port: 3000 });
 ```
 
 ## 🛠️ Features
 
 - **Fastify Ecosystem Integration**: Works perfectly with `@fastify/websocket`.
+- **Swagger-like Documentation**: Serve a beautiful, interactive documentation UI directly from your Fastify app with one line of code.
 - **Validation**: Every incoming message is validated against its Zod schema. Invalid messages are handled automatically.
 - **Route-Level Documentation**: Links your Fastify routes with your WebSocket contract for unified documentation.
 - **Async Handling**: Full support for async/await in your event handlers.

@@ -25,7 +25,7 @@ import { createContract } from '@socketdocs/core';
 
 const contract = createContract({
   name: 'Realtime Chat',
-  version: '1.2.0',
+  version: '0.2.0',
   description: 'A professional chat API with room support.',
 });
 ```
@@ -39,7 +39,7 @@ const adminNamespace = contract.namespace('admin');
 ```
 
 ### **Events**
-Events are defined with a name, a direction, and a payload schema.
+Events are defined with a name, a direction, and a payload schema. You can also chain `.errors()` to document possible error responses.
 
 ```typescript
 import { z } from 'zod';
@@ -54,6 +54,27 @@ chatNamespace.event({
     text: z.string().nonempty(),
     timestamp: z.number().default(() => Date.now()),
   }),
+}).errors([
+  { code: 'AUTH_FAILED', description: 'User not logged in' },
+  { code: 'RATE_LIMITED', description: 'Too many messages' }
+]);
+```
+
+### **Security**
+Document authentication requirements for your initial connection.
+
+```typescript
+const contract = createContract({
+  name: 'Secure API',
+  version: '1.0.0',
+  security: [
+    {
+      name: 'AuthToken',
+      type: 'apiKey',
+      in: 'header',
+      description: 'JWT token required for connection'
+    }
+  ]
 });
 ```
 
@@ -72,8 +93,16 @@ SocketDocs is extensible. You can register plugins to hook into the event lifecy
 
 ```typescript
 contract.registerPlugin({
+  name: 'Logger',
+  version: '1.0.0',
   onEvent(name, payload, namespace) {
-    console.log(`[SocketDocs] Event "${name}" in "${namespace}" triggered.`);
+    console.log(`[SocketDocs] Incoming Event: ${namespace}/${name}`);
+  },
+  onResponse(name, response, namespace) {
+    console.log(`[SocketDocs] Outgoing Response: ${namespace}/${name}`);
+  },
+  onError(name, error, namespace) {
+    console.error(`[SocketDocs] Error in ${namespace}/${name}:`, error);
   }
 });
 ```

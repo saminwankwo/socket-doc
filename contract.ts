@@ -4,7 +4,15 @@ import { z } from "zod"
 export const contract = createContract({
   name: "demo-api",
   version: "1.0.0",
-  description: "A demo API for testing the CLI"
+  description: "A demo API for testing the CLI",
+  security: [
+    {
+      name: "UserToken",
+      type: "apiKey",
+      in: "header",
+      description: "A valid JWT token passed in the 'Authorization' header"
+    }
+  ]
 })
 
 const main = contract.namespace("main")
@@ -15,7 +23,10 @@ main.event({
   payload: z.object({
     message: z.string().optional()
   })
-})
+}).errors([
+  { code: "RATE_LIMITED", description: "Too many pings" },
+  { code: "INVALID_MESSAGE", description: "Message content is invalid" }
+])
 
 main.event({
   name: "pong",

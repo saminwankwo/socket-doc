@@ -16,7 +16,7 @@ npm install @socketdocs/nestjs @socketdocs/core @nestjs/websockets @nestjs/platf
 import { createContract } from '@socketdocs/core';
 import { z } from 'zod';
 
-export const contract = createContract({ name: 'NestJS API', version: '1.0.0' });
+export const contract = createContract({ name: 'NestJS API', version: '0.2.0' });
 contract.namespace('default').event({
   name: 'message',
   direction: 'client_to_server',

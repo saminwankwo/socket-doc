@@ -1,5 +1,6 @@
-import { createContract } from "../src/contract";
-import { bindWsAdapter } from "../../ws/src/index";
+import { describe, expect, test, beforeEach } from "vitest";
+import { createContract } from "../src/contract.js";
+import { bindWsAdapter } from "../../ws/src/index.js";
 import { WebSocketServer } from "ws";
 import { z } from "zod";
 
