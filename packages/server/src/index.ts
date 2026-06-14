@@ -7,7 +7,7 @@ import {
   generateHtml
 } from "@socketdocs/core";
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname, join, existsSync } from "path";
 import type { INestApplication } from "@nestjs/common";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 
@@ -15,7 +15,7 @@ export interface SocketDocsOptions {
   path?: string;
   schema?: SocketDocsSchema | (() => SocketDocsSchema);
   contract?: Contract | (() => Contract);
-  auth?: { username: string; password: string };
+  auth?: { username: string; password: string } | ((req: Request, res: Response, next: NextFunction) => void);
   customCss?: string;
   title?: string;
   servers?: Array<{ url: string; label: string }>;
@@ -27,7 +27,7 @@ const __dirname = dirname(__filename);
 /**
  * Basic authentication middleware
  */
-function authMiddleware(auth: { username: string; password: string }) {
+function basicAuthMiddleware(auth: { username: string; password: string }) {
   return (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -63,7 +63,11 @@ export function socketDocs(options: SocketDocsOptions) {
 
   // Apply auth middleware if enabled
   if (options.auth) {
-    router.use(authMiddleware(options.auth));
+    if (typeof options.auth === "function") {
+      router.use(options.auth);
+    } else {
+      router.use(basicAuthMiddleware(options.auth));
+    }
   }
 
   // Helper to get the schema
@@ -84,25 +88,22 @@ export function socketDocs(options: SocketDocsOptions) {
   });
 
   // Try to serve docs-server static files first
-  try {
-    const docsDistPath = join(__dirname, "../../docs-server/dist");
+  const docsDistPath = join(__dirname, "../../docs-server/dist");
+  if (existsSync(docsDistPath)) {
     router.use(expressStatic(docsDistPath));
-  } catch (e) {
-    // Fallback if docs-server dist not available
   }
 
-  // Serve UI
+  // Serve UI (SPA fallback)
   router.get("*", (req: Request, res: Response) => {
-    try {
-      const docsDistPath = join(__dirname, "../../docs-server/dist");
+    if (existsSync(docsDistPath)) {
       res.sendFile(join(docsDistPath, "index.html"));
-    } catch (e) {
+    } else {
       // Fallback to generateHtml
       const contract = options.contract 
         ? (typeof options.contract === "function" ? options.contract() : options.contract)
         : convertSocketDocsSchemaToContract(getSchema());
       const spec = contract.generateSpec();
-      res.send(generateHtml(spec));
+      res.send(generateHtml(spec, { customCss: options.customCss, title: options.title }));
     }
   });
 

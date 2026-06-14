@@ -1,11 +1,14 @@
-export function generateHtml(spec: any): string {
+export function generateHtml(spec: any, options?: { customCss?: string; title?: string }): string {
+  const pageTitle = options?.title || `SocketDocs Explorer - ${spec.info.name}`;
+  const customStyle = options?.customCss ? `<style>${options.customCss}</style>` : '';
+  
   return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SocketDocs Explorer - ${spec.info.name}</title>
+  <title>${pageTitle}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
@@ -14,6 +17,7 @@ export function generateHtml(spec: any): string {
     body { font-family: 'Inter', sans-serif; }
     pre, code { font-family: 'JetBrains Mono', monospace; }
   </style>
+  ${customStyle}
 </head>
 <body class="bg-slate-950 text-slate-200">
   <div class="flex min-h-screen">
