@@ -1,0 +1,78 @@
+{
+  "title": "Chat API",
+  "version": "1.0.0",
+  "description": "A real-time chat API",
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "label": "Local Development"
+    }
+  ],
+  "events": [
+    {
+      "name": "chat:message",
+      "direction": "both",
+      "namespace": "/chat",
+      "room": "general",
+      "description": "Send or receive a chat message in a room",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "roomId": { "type": "string" },
+          "content": { "type": "string" },
+          "userId": { "type": "string" }
+        },
+        "required": ["roomId", "content", "userId"]
+      },
+      "acknowledgement": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "messageId": { "type": "string" }
+        },
+        "required": ["success"]
+      },
+      "errors": [
+        { "code": "ROOM_NOT_FOUND", "message": "The specified room does not exist" },
+        { "code": "MESSAGE_TOO_LONG", "message": "Message content exceeds maximum length" }
+      ],
+      "example": {
+        "emit": { "roomId": "general", "content": "Hello World!", "userId": "user-123" },
+        "receive": { "roomId": "general", "content": "Hi there!", "userId": "user-456" }
+      },
+      "tags": ["messaging"],
+      "deprecated": false
+    },
+    {
+      "name": "user:join",
+      "direction": "on",
+      "namespace": "/chat",
+      "description": "A new user joins the room",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" },
+          "username": { "type": "string" }
+        },
+        "required": ["userId", "username"]
+      },
+      "tags": ["users"],
+      "deprecated": false
+    },
+    {
+      "name": "typing:start",
+      "direction": "emit",
+      "namespace": "/chat",
+      "description": "User starts typing",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" }
+        },
+        "required": ["userId"]
+      },
+      "tags": ["presence"],
+      "deprecated": false
+    }
+  ]
+}

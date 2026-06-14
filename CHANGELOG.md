@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-06-14
+
+### Added
+- **Build.md Compliance**: Implemented features from build.md
+  - Added `SocketEventDoc` and `SocketDocsSchema` interfaces for build.md-style schema definition
+  - Added conversion utilities between existing contract format and `SocketDocsSchema`
+  - Created new `@socketdocs/server` package for server integration
+  - **Express Middleware**: Added `socketDocs()` middleware to serve UI and schema from Express
+  - **NestJS Module**: Added `SocketDocsModule.setup()` method to mount docs on NestJS apps
+- **New CLI Commands**: Added build.md-compatible CLI commands
+  - `serve`: Alias for `serve-docs`, accepts `--schema` option
+  - `build`: Build static HTML documentation to file
+  - `validate`: Validate `socketdocs.json` schema files
+- **Sample Schema**: Added `socketdocs.json` in root as an example build.md-style schema
+
 ## [0.3.0] - 2026-06-11
 
 ### Added

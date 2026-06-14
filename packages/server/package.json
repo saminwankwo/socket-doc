@@ -1,0 +1,42 @@
+{
+  "name": "@socketdocs/server",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "SocketDocs server integration: Express middleware and NestJS module for serving UI and schema.",
+  "keywords": [
+    "socketdocs",
+    "express",
+    "nestjs",
+    "websocket",
+    "documentation"
+  ],
+  "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "directory": "packages/server"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@socketdocs/core": "^0.3.0",
+    "express": "^4.21.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@nestjs/common": "^11.1.24",
+    "@nestjs/core": "^11.1.24",
+    "@nestjs/platform-express": "^11.1.24",
+    "typescript": "^6.0.3"
+  }
+}

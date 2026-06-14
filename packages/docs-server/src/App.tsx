@@ -43,8 +43,8 @@ const App = () => {
   }, [theme]);
 
   useEffect(() => {
-    // In production this would fetch from the CLI served /api/spec
-    fetch('http://localhost:4000/api/spec')
+    // Fetch from relative schema.json (served by the server middleware)
+    fetch('./schema.json')
       .then(res => res.json())
       .then(data => {
         setSpec(data);
