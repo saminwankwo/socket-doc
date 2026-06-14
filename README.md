@@ -30,6 +30,9 @@ npm install @socketdocs/core
 
 ### 1. Define your Contract
 
+You can define your contract using either our fluent API or a build.md-style `socketdocs.json` file!
+
+#### Option A: Fluent API (Recommended)
 Create a `socketdocs.contract.ts` file:
 
 ```typescript
@@ -81,7 +84,88 @@ chat.event({
 });
 ```
 
+#### Option B: Build.md-style socketdocs.json
+Create a `socketdocs.json` file:
+```json
+{
+  "title": "Chat API",
+  "version": "1.0.0",
+  "description": "A realtime chat API",
+  "servers": [
+    { "url": "http://localhost:3000", "label": "Local Development" }
+  ],
+  "events": [
+    {
+      "name": "chat:message",
+      "direction": "both",
+      "namespace": "/chat",
+      "description": "Send or receive a chat message in a room",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "roomId": { "type": "string" },
+          "content": { "type": "string" },
+          "userId": { "type": "string" }
+        },
+        "required": ["roomId", "content", "userId"]
+      },
+      "errors": [
+        { "code": "ROOM_NOT_FOUND", "message": "Room does not exist" },
+        { "code": "MESSAGE_TOO_LONG", "message": "Message too long" }
+      ],
+      "tags": ["messaging"]
+    }
+  ]
+}
+```
+
 ### 2. Bind to your Server (Socket.IO example)
+
+Or mount the docs directly on your server with our new middleware!
+
+#### Express
+```typescript
+import express from "express";
+import { socketDocs } from "@socketdocs/server";
+import { SocketDocsSchema } from "@socketdocs/core";
+// Or import your contract: import { contract } from "./socketdocs.contract";
+
+const app = express();
+
+// Mount documentation at /socket-docs
+app.use("/socket-docs", socketDocs({ 
+  schema: mySocketDocsSchema, 
+  // Or use a contract: contract: myContract,
+  servers: [{ url: "http://localhost:3000", label: "Local" }]
+}));
+
+app.listen(3000, () => {
+  console.log("Server running on http://localhost:3000");
+  console.log("Docs available at http://localhost:3000/socket-docs");
+});
+```
+
+#### NestJS
+```typescript
+import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
+import { SocketDocsModule } from "@socketdocs/server";
+import { AppModule } from "./app.module";
+import { mySchema } from "./socketdocs.json"; // Or your contract
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  
+  // Mount documentation at /socket-docs
+  SocketDocsModule.setup("/socket-docs", app, mySchema, {
+    servers: [{ url: "http://localhost:3000", label: "Local" }]
+  });
+
+  await app.listen(3000);
+  console.log("Docs available at http://localhost:3000/socket-docs");
+}
+bootstrap();
+```
 
 ```typescript
 import { Server } from "socket.io";
@@ -118,16 +202,27 @@ bindSocketioAdapter(io, contract, handlers, {
 
 ### 3. Generate Documentation
 
-Use the CLI to generate a spec and serve the UI:
+Use the CLI to generate a spec and serve the UI (we support both the old commands and new build.md-compatible commands!):
 
 ```bash
 # Initialize config
 npx socketdocs init
 
+# --- Build.md-compatible commands ---
+# Validate your schema
+npx socketdocs validate -s socketdocs.json
+
+# Serve documentation UI
+npx socketdocs serve -s socketdocs.json -p 4000
+
+# Build static HTML documentation
+npx socketdocs build -s socketdocs.json -o docs/index.html
+
+# --- Existing commands ---
 # Generate JSON spec
 npx socketdocs generate-spec
 
-# Serve documentation UI
+# Serve documentation UI (alias for serve)
 npx socketdocs serve-docs -p 4000
 
 # Validate your contract

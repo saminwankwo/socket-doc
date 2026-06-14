@@ -1,6 +1,29 @@
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { ZodTypeAny } from "zod";
-import { PluginManager, SocketDocsPlugin } from "./plugins.js"
+import { PluginManager, SocketDocsPlugin } from "./plugins.js";
+
+// --- Compatibility types from build.md ---
+export interface SocketEventDoc {
+  name: string;
+  direction: "emit" | "on" | "both";
+  namespace?: string;
+  room?: string;
+  description: string;
+  payload: any; // JSONSchema
+  acknowledgement?: any; // JSONSchema
+  errors?: Array<{ code: string; message: string }>;
+  example?: { emit?: unknown; receive?: unknown };
+  tags?: string[];
+  deprecated?: boolean;
+}
+
+export interface SocketDocsSchema {
+  title: string;
+  version: string;
+  description?: string;
+  servers: Array<{ url: string; label: string }>;
+  events: SocketEventDoc[];
+}
 
 /**
  * The direction of an event - whether it's sent from client to server, server to client, or both
@@ -256,3 +279,103 @@ export function createContract(options: ContractOptions) {
  * Type representing a SocketDocs contract instance
  */
 export type Contract = ReturnType<typeof createContract>;
+
+/**
+ * Converts a Contract to a SocketDocsSchema (for build.md compatibility)
+ * @param contract - The contract instance
+ * @param servers - Optional list of servers (default: [])
+ * @returns SocketDocsSchema
+ */
+export function convertContractToSocketDocsSchema(
+  contract: Contract,
+  servers: Array<{ url: string; label: string }> = []
+): SocketDocsSchema {
+  const events: SocketEventDoc[] = [];
+  
+  for (const [nsName, ns] of contract._namespaces.entries()) {
+    for (const [evtName, evt] of ns.events.entries()) {
+      // Convert direction from client_to_server/server_to_client/bidirectional to emit/on/both
+      let direction: "emit" | "on" | "both";
+      if (evt.direction === "client_to_server") direction = "emit";
+      else if (evt.direction === "server_to_client") direction = "on";
+      else direction = "both";
+
+      // Convert errors
+      const errors = evt.errors?.map(e => ({
+        code: String(e.code),
+        message: e.description
+      }));
+
+      // Convert examples
+      const example = evt.examples?.[0] ? {
+        emit: evt.direction !== "server_to_client" ? evt.examples[0] : undefined,
+        receive: evt.direction !== "client_to_server" ? evt.examples[0] : undefined
+      } : undefined;
+
+      events.push({
+        name: evtName,
+        direction,
+        namespace: nsName === "default" ? "/" : `/${nsName}`,
+        description: evt.description || evt.summary || "",
+        payload: evt.payloadSchema || (evt.payload ? zodToJsonSchema(evt.payload) : {}),
+        acknowledgement: evt.responseSchema || (evt.response ? zodToJsonSchema(evt.response) : undefined),
+        errors,
+        example,
+        tags: evt.roles,
+        deprecated: false
+      });
+    }
+  }
+
+  return {
+    title: contract.options.name,
+    version: contract.options.version,
+    description: contract.options.description,
+    servers,
+    events
+  };
+}
+
+/**
+ * Converts a SocketDocsSchema to a Contract
+ * @param schema - SocketDocsSchema
+ * @returns Contract
+ */
+export function convertSocketDocsSchemaToContract(schema: SocketDocsSchema): Contract {
+  const contract = createContract({
+    name: schema.title,
+    version: schema.version,
+    description: schema.description
+  });
+
+  for (const event of schema.events) {
+    // Convert namespace
+    const nsName = event.namespace?.startsWith("/") ? event.namespace.slice(1) : event.namespace || "default";
+    
+    // Convert direction
+    let direction: Direction;
+    if (event.direction === "emit") direction = "client_to_server";
+    else if (event.direction === "on") direction = "server_to_client";
+    else direction = "bidirectional";
+
+    // Convert errors
+    const errors = event.errors?.map(e => ({
+      code: e.code,
+      description: e.message
+    }));
+
+    const ns = contract.namespace(nsName);
+    ns.event({
+      name: event.name,
+      direction,
+      description: event.description,
+      payloadSchema: event.payload,
+      responseSchema: event.acknowledgement,
+      roles: event.tags,
+      examples: event.example ? [event.example] : [],
+      errors
+    });
+  }
+
+  return contract;
+}
