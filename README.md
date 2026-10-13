@@ -1,289 +1,270 @@
 # SocketDocs
 
-**Swagger for Socket.IO.** SocketDocs turns a running Socket.IO server into interactive, Swagger-style documentation: it discovers the events your server handles, lets you enrich them with [Zod](https://zod.dev) or JSON Schema, and serves a self-hosted UI with a **Try it out** playground, an **Authorize** button for handshake auth, and a live event log — all mounted on your own Express (or NestJS) app, no separate docs site required.
+**Swagger-style documentation and a live playground for Socket.IO APIs.**
 
-- **Zero config**: mount `SocketDocs.setup(app, io, ...)` and every event appears automatically as clients use them.
-- **Enrich where it counts**: add schemas, examples, errors and docs to the events that matter with `docs.event(...)` (or `@SocketEvent` in NestJS).
-- **One spec model**: `/spec.json` is the single `SocketDocsSpec` shape consumed by the UI — export it, diff it, or point tooling at it.
-
-> Status: `1.0.0-alpha.0`. Socket.IO v4 only, see [Limitations](#limitations).
-
----
-
-## Table of contents
-
-- [Express quickstart (60 seconds)](#express-quickstart-60-seconds)
-- [NestJS quickstart](#nestjs-quickstart)
-- [How auto-discovery works](#how-auto-discovery-works)
-- [Declaring events](#declaring-events)
-- [Auth](#auth)
-- [The UI](#the-ui)
-- [Packages](#packages)
-- [Examples](#examples)
-- [CLI](#cli)
-- [Limitations](#limitations)
-- [Screenshots](#screenshots)
-- [Development](#development)
-
----
-
-## Express quickstart (60 seconds)
-
-```bash
-npm install @socketdocs/express socket.io express zod
-```
+Mount one line on your Express server and get an interactive docs page at `/socket-docs`: every event listed, schemas and examples shown, and a **Try it out** button that connects to your real server and emits events.
 
 ```ts
-import express from "express";
-import http from "http";
-import { Server } from "socket.io";
-import { SocketDocs } from "@socketdocs/express";
-import { z } from "zod";
+SocketDocs.setup(app, io, { title: 'Chat API', version: '1.0.0' });
+```
+
+> **Status:** Express is supported. NestJS support is in progress (see [Roadmap](#roadmap)).
+
+---
+
+## Why SocketDocs?
+
+REST has Swagger. WebSockets have had nothing comparable. Socket.IO handlers are registered at runtime inside a `connection` callback, so there is no route table to read. SocketDocs fills that gap in two ways:
+
+1. **Auto-discovery:** it watches `socket.on(...)` calls and lists every event it sees, with zero configuration.
+2. **Code-first descriptions:** you describe an event next to its handler (`docs.event(...)`) to add summaries, schemas, examples and errors. Docs and code live in the same place, so they cannot drift apart.
+
+You can start with the first and add the second one event at a time, the same way you grow a Swagger doc.
+
+---
+
+## Installation
+
+```bash
+npm install @socketdocs/express
+```
+
+`zod` is optional. Install it only if you want to describe payloads with Zod schemas. Plain JSON Schema works without it.
+
+**Requirements:** Node.js 18+, Express 4 or 5, Socket.IO 4.
+
+---
+
+## Quick start (Express)
+
+```ts
+import express from 'express';
+import http from 'node:http';
+import { Server } from 'socket.io';
+import { SocketDocs } from '@socketdocs/express';
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// 1. Mount the docs
 const docs = SocketDocs.setup(app, io, {
-  path: "/socket-docs",
-  title: "Chat API",
-  version: "1.0.0",
-  description: "Realtime chat",
+  title: 'Chat API',
+  version: '1.0.0',
+  description: 'Realtime chat API',
 });
 
-// Optional enrichment. Without this, events are still discovered automatically (names only).
-docs.event("send_message", {
-  summary: "Send a message to a room",
-  payload: z.object({ text: z.string(), roomId: z.string() }),
-  response: z.object({ ok: z.boolean() }),
-  errors: [{ code: "INVALID_ROOM", description: "Room does not exist" }],
+// 2. Your normal Socket.IO code, unchanged
+io.on('connection', (socket) => {
+  socket.on('send_message', (payload, ack) => {
+    ack?.({ ok: true });
+  });
 });
 
-server.listen(3000);
+server.listen(3000, () => console.log('Docs: http://localhost:3000/socket-docs'));
 ```
 
-Open <http://localhost:3000/socket-docs> and you get every event your server handles,
-listed automatically, with a **Try it out** flow per event.
+Open `http://localhost:3000/socket-docs`. Once a client connects, `send_message` appears in the list automatically.
 
-### `SocketDocs.setup()` options
+---
+
+## Describing events
+
+Auto-discovery only knows an event's **name**. To add detail, declare it:
+
+```ts
+import { z } from 'zod';
+
+docs.event('send_message', {
+  summary: 'Send a message to a room',
+  description: 'Broadcasts the message to everyone in the room.',
+  tags: ['messaging'],
+  payload: z.object({
+    text: z.string().min(1).max(500),
+    roomId: z.string(),
+  }),
+  response: z.object({ ok: z.boolean() }), // the ack
+  errors: [{ code: 'INVALID_ROOM', description: 'Room does not exist' }],
+  examples: [{ text: 'Hello!', roomId: 'general' }],
+});
+```
+
+`payload` and `response` accept either a **Zod schema** or a **raw JSON Schema** object.
+
+### Server-to-client events
+
+Document events your server emits so clients know what to listen for:
+
+```ts
+docs.event('new_message', {
+  direction: 'server_to_client',
+  summary: 'A new message arrived in a room',
+  payload: z.object({ id: z.string(), text: z.string(), sender: z.string() }),
+});
+```
+
+### Namespaces
+
+```ts
+docs.namespace('/chat').event('join_room', {
+  summary: 'Join a chat room',
+  payload: z.object({ roomId: z.string() }),
+});
+```
+
+Events without a namespace belong to the default namespace `/`.
+
+### Event options
+
+| Option | Type | Description |
+|---|---|---|
+| `direction` | `'client_to_server' \| 'server_to_client' \| 'bidirectional'` | Defaults to `client_to_server` |
+| `summary` | `string` | One-line description shown on the card |
+| `description` | `string` | Longer explanation |
+| `tags` | `string[]` | Used for search and grouping |
+| `payload` | Zod or JSON Schema | Shape of the data sent with the event |
+| `response` | Zod or JSON Schema | Shape of the acknowledgement |
+| `errors` | `{ code, description }[]` | Possible error responses |
+| `examples` | `unknown[]` | Example payloads; the first one prefills Try it out |
+| `authRequired` | `boolean` | Shows an AUTH badge |
+| `deprecated` | `boolean` | Shows the event struck through |
+
+---
+
+## Configuration
+
+```ts
+SocketDocs.setup(app, io, {
+  path: '/socket-docs',        // where the docs are mounted
+  title: 'Chat API',
+  version: '1.0.0',
+  description: '...',
+  socketPath: '/socket.io',    // your Socket.IO "path" option
+  security: [{ name: 'token', type: 'bearer', in: 'auth' }],
+  auth: { username: 'admin', password: 'secret' }, // or an Express middleware
+  enabled: process.env.NODE_ENV !== 'production',
+});
+```
 
 | Option | Default | Description |
 |---|---|---|
-| `path` | `"/socket-docs"` | Where the docs UI and `spec.json` are mounted. |
-| `title`, `version`, `description` | — | `info` block of the spec. |
-| `servers` | `[]` | Extra server URLs offered in the UI's connection bar. |
-| `security` | `[]` | Security schemes shown/prefilled in the **Authorize** modal (`in: "auth"` means the Socket.IO handshake `auth` payload). |
-| `socketPath` | `io.path()` | Socket.IO engine path (not the namespace). |
-| `auth` | — | Protects the docs page itself: `{ username, password }` (HTTP Basic) or any Express middleware. |
-| `sniff` | `true` | Auto-discover events from live traffic. |
-| `captureExamples` | `false` | Store one sanitized sample payload per event from live traffic. |
+| `path` | `/socket-docs` | Mount path for the docs UI |
+| `title` / `version` / `description` | | Shown in the page header |
+| `socketPath` | `/socket.io` | The path your Socket.IO server listens on |
+| `security` | `[]` | Credentials the **Authorize** dialog should offer |
+| `auth` | none | Protects the docs page itself (HTTP Basic or your own middleware) |
+| `enabled` | `true` | Set `false` to mount nothing |
 
-`docs.event(name, def, { namespace })` returns the instance, so calls can be chained.
-The instance also exposes `registry` (the `EventRegistry`), `namespace(name, description)` and `spec()`.
+The raw spec is available at `/<path>/spec.json` if you want to inspect it or build on it.
 
-## NestJS quickstart
+---
+
+## The playground
+
+Every event card has a **Try it out** button.
+
+- **Connection bar:** the server URL is inferred from the page address, so there is nothing to configure. Pick a namespace and click **Connect**.
+- **Authorize:** supply a Bearer token, API key or custom query parameter. Values are sent in the Socket.IO handshake `auth` payload (or query string).
+- **Try it out:** edit the payload (prefilled from your first example), click **Execute**, and see the acknowledgement and timing.
+- **Listen:** subscribe to server-to-client events and watch them arrive.
+- **Live event log:** every sent and received event, filterable, with timestamps.
+- Light and dark themes.
+
+> Browsers cannot set custom HTTP headers on WebSocket connections, so credentials travel in Socket.IO's `auth` object or query string, not in headers. Read them on the server with `socket.handshake.auth` or `socket.handshake.query`.
+
+---
+
+## How discovery works (and its limits)
+
+SocketDocs wraps `socket.on` and records each event name as your handlers register. Because Socket.IO registers handlers when a client connects:
+
+- Discovered events appear **after the first client connects**.
+- Discovered events have a **name only**. Add `docs.event(...)` for schemas, descriptions and examples.
+- A declared event always overrides its discovered version.
+- Socket.IO's reserved events (`connect`, `disconnect`, `connect_error`, and so on) are never listed.
+- Events your server **emits** cannot be discovered. Declare them with `direction: 'server_to_client'`.
+
+Declared events appear immediately, even before anyone connects.
+
+---
+
+## NestJS (in progress)
+
+The planned API mirrors `SwaggerModule`:
+
+```ts
+SocketDocsModule.setup('/socket-docs', app, { title: 'Chat API', version: '1.0.0' });
+```
+
+It will read your existing `@WebSocketGateway` and `@SubscribeMessage` handlers with no changes, with an optional `@SocketEvent({...})` decorator for extra detail.
+
+---
+
+## Security
+
+The docs page lists your API's events and lets visitors send real messages to your server. **Do not expose it publicly by accident.**
+
+- Disable it in production: `enabled: process.env.NODE_ENV !== 'production'`.
+- Or protect it: `auth: { username, password }`, or pass your own middleware.
+- Never put real secrets in `examples`. They are served to anyone who can open the page.
+
+---
+
+## Command line
 
 ```bash
-npm install @socketdocs/nestjs @nestjs/core @nestjs/websockets @nestjs/platform-socket.io socket.io
+# Download the spec from a running server
+npx socketdocs export --url http://localhost:3000/socket-docs -o spec.json
+
+# Lint the spec
+npx socketdocs lint spec.json
+
+# Export as AsyncAPI 3.0
+npx socketdocs asyncapi spec.json -o asyncapi.json
 ```
 
-```ts
-import { NestFactory } from "@nestjs/core";
-import { IoAdapter } from "@nestjs/platform-socket.io";
-import { SocketDocsModule, SocketEvent } from "@socketdocs/nestjs";
-import { AppModule } from "./app.module.js";
-
-const app = await NestFactory.create(AppModule);
-app.useWebSocketAdapter(new IoAdapter(app)); // SocketDocs sniffs the Socket.IO server
-
-SocketDocsModule.setup("/socket-docs", app, {
-  title: "Chat API",
-  version: "1.0.0",
-});
-
-await app.listen(3000);
-```
-
-```ts
-import { SubscribeMessage } from "@nestjs/websockets";
-import { SocketEvent } from "@socketdocs/nestjs";
-import { z } from "zod";
-
-@SubscribeMessage("send_message")
-@SocketEvent({
-  summary: "Send a message to a room",
-  payload: z.object({ text: z.string(), roomId: z.string() }),
-  response: z.object({ ok: z.boolean() }),
-  errors: [{ code: "INVALID_ROOM", description: "Room does not exist" }],
-})
-handleMessage(@MessageBody() data: unknown) {
-  return { ok: true };
-}
-```
-
-`SocketDocsModule.setup(path, app, config)` mirrors `SwaggerModule.setup(...)`: it reads your existing
-`@WebSocketGateway` / `@SubscribeMessage` metadata, mounts the same UI and `spec.json` router as the
-Express package, and returns a docs instance (`event()`, `namespace()`, `spec()`, `registry`).
-
-## How auto-discovery works
-
-SocketDocs hooks your Socket.IO server and records events as they happen:
-
-- **Incoming** (`client_to_server`): every `socket.on(...)` registration is recorded, and when the
-  listener is invoked with a function as its last argument the event is marked
-  `kind: "request_response"` (an ack was used).
-- **Outgoing** (`server_to_client`): events emitted to connected sockets are recorded through
-  `socket.onAnyOutgoing(...)` (Socket.IO ≥ 4.5). An event that is both received and emitted becomes
-  `bidirectional`.
-- Reserved Socket.IO events (`connect`, `disconnect`, `error`, ...) are excluded.
-- Sniffing never throws into your code and never changes handler behaviour.
-
-**The one limitation, per framework:**
-
-| Framework | When events appear | Why |
-|---|---|---|
-| Express | After the **first client connects** | Socket.IO handlers are registered inside the `connection` callback. Opening the docs page and pressing **Connect** counts as that first client. |
-| NestJS | At **startup**, before any client connects | Events are read from gateway metadata. `server_to_client` events are then sniffed once the gateway emits them (requires `@WebSocketServer()` — see [Limitations](#limitations)). |
-
-Each event in the UI carries a `source` badge: **documented** (`declared`, enriched by you) vs
-**auto-discovered** (`sniffed` or `decorator`, name-only) — a quick way to see what still needs schemas.
-
-## Declaring events
-
-Declaration **describes only**: it never registers handlers and never validates or blocks payloads.
-
-```ts
-docs.event("send_message", {
-  summary: "Send a message to a room",
-  description: "Broadcast to everyone in the room.",
-  payload: z.object({ text: z.string(), roomId: z.string() }),   // Zod ...
-  response: z.object({ ok: z.boolean() }),                        // ack payload
-  errors: [{ code: "INVALID_ROOM", description: "Room does not exist" }],
-  tags: ["chat"],
-  kind: "request_response",                                      // client passes an ack callback
-  authRequired: true,
-}, { namespace: "/chat" });
-```
-
-- **Zod** schemas (v3/v4) and plain **JSON Schema** objects are both accepted; conversion happens at
-  registration time (`normalizeSchema` in `@socketdocs/core`).
-- Declared fields always win; sniffed data only fills blanks (e.g. a `kind` discovered from live acks).
-- NestJS: the same fields are available on `@SocketEvent({...})`, placed alongside `@SubscribeMessage`.
-
-## Auth
-
-Two independent things:
-
-1. **Protecting the docs page.** Pass `auth` to `setup()` — either `{ username, password }` (HTTP Basic
-   over the whole `/socket-docs` route, including `spec.json`) or any Express `RequestHandler`
-   (e.g. your session/JWT middleware).
-2. **Authorizing the playground connection.** The UI's **Authorize** button sets what is sent in the
-   Socket.IO handshake `auth` payload (and optional query params): **None**, **Bearer token**
-   (`auth: { token }`), **API key** (`auth: { apiKey }`) or **Custom** (free-form JSON merged into
-   `auth`). `spec.security` entries prefill the field names, and the value is kept in `sessionStorage`
-   so a page reload keeps you signed in. After changing it, the client reconnects.
-
-On the server, check it as usual:
-
-```ts
-io.use((socket, next) => {
-  const token = socket.handshake.auth?.token;
-  if (token !== process.env.TOKEN) return next(new Error("unauthorized"));
-  next();
-});
-```
-
-> Browsers cannot set custom WebSocket headers, so SocketDocs auth travels through the handshake
-> `auth` payload or query params — never the `Authorization` header.
-
-## The UI
-
-- **Sidebar**: namespaces and events, with search across name, summary and tags.
-- **Event cards**: summary, payload/response schemas, examples, errors, and an inline **Try it out**
-  with a JSON editor prefilled from `examples[0]` or generated from the payload schema. **Execute**
-  emits the event; for ack-based events the ack response is shown in the card (10 s timeout message).
-- **Connection bar**: server URL (defaults to `window.location.origin`), namespace picker, connect /
-  disconnect and a status indicator. One socket per namespace, created lazily and reused.
-- **Listen toggle** on `server_to_client` / `bidirectional` events to receive and log pushes.
-- **Event log**: timestamped in/out/error/info entries with payload, clear, auto-scroll and a filter.
-- Dark/light theme toggle.
+---
 
 ## Packages
 
-| Package | Path | Role |
-|---|---|---|
-| [`@socketdocs/core`](packages/core) | `packages/core` | `SocketDocsSpec` model, `EventRegistry`, `normalizeSchema`, `lintSpec`, `toAsyncApi`. No Socket.IO/Express imports. |
-| [`@socketdocs/express`](packages/express) | `packages/express` | `SocketDocs.setup(...)`, Socket.IO instrumentation, `spec.json` + bundled UI serving. |
-| [`@socketdocs/nestjs`](packages/nestjs) | `packages/nestjs` | `SocketDocsModule.setup(...)`, gateway discovery, `@SocketEvent`. |
-| [`@socketdocs/cli`](packages/cli) | `packages/cli` | `socketdocs lint` and `socketdocs export-asyncapi` (Node ≥ 18). |
-| `@socketdocs/ui` | `packages/ui` | The React SPA (private; its build is bundled into `@socketdocs/express`). |
+| Package | Purpose |
+|---|---|
+| `@socketdocs/core` | Spec model, schema normalization (Zod / JSON Schema), event registry, linting, AsyncAPI export |
+| `@socketdocs/express` | Express mount, Socket.IO discovery, bundled docs UI |
+| `@socketdocs/nestjs` | NestJS module and decorators *(in progress)* |
+| `@socketdocs/cli` | Spec export, lint and AsyncAPI commands |
 
-## Examples
+---
 
-- [`examples/express-chat`](examples/express-chat) — Express + Socket.IO chat: a declared event, an
-  undeclared event (to show sniffing), an ack-based event and handshake-token auth. **The manual test bed.**
-- [`examples/nest-chat`](examples/nest-chat) — minimal NestJS gateway with two `@SubscribeMessage`
-  handlers, one using `@SocketEvent`.
+## Local development
 
 ```bash
-npm install && npm run build            # build the packages + UI bundle
-npm run start -w socketdocs-example-express-chat
-npm run start -w socketdocs-example-nest-chat
-npm run check:examples                  # end-to-end smoke check of express-chat
-```
-
-## CLI
-
-`@socketdocs/cli` turns a spec — from a live server or a file — into lint results or an AsyncAPI
-document. It never loads TypeScript contracts, only `/spec.json` output.
-
-```bash
-npm install -g @socketdocs/cli
-
-socketdocs lint --url http://localhost:3000/socket-docs/spec.json
-socketdocs lint --file ./spec.json
-socketdocs export-asyncapi --url http://localhost:3000/socket-docs/spec.json -o asyncapi.json
-```
-
-`lint` exits `1` on errors (warnings alone exit `0`); both commands exit `2` on usage mistakes.
-`runCli()` is exported for programmatic use and never calls `process.exit`.
-
-## Limitations
-
-- **Socket.IO v4 only.** Raw `ws`, Fastify websockets and Socket.IO v2 are not supported.
-- **Express sniffing is timing-dependent**: events appear after the first client connection (the docs
-  page itself can be that client). NestJS discovery has no such gap for client → server events.
-- **NestJS `server_to_client` sniffing** requires the gateway to expose its Socket.IO server/namespace
-  via `@WebSocketServer()`. Without it, declare those events with
-  `@SocketEvent({ direction: "server_to_client" })` or `docs.event(...)`.
-- **Header auth does not apply to sockets**: the Socket.IO handshake cannot carry custom headers from
-  a browser, so use the `auth` payload or query params (see [Auth](#auth)).
-- **Express adapter required for NestJS**: `SocketDocsModule.setup()` throws on Fastify adapters.
-- **Declaration is documentation only**: SocketDocs does not validate or transform your payloads.
-- Sniffed examples are truncated and obvious secret keys (`password`, `token`, `authorization`,
-  `secret`) are redacted, but avoid capturing sensitive payloads in production.
-
-## Screenshots
-
-<!-- Replace these placeholders with real screenshots before the 1.0 release. -->
-
-| Overview | Try it out | Authorize |
-|---|---|---|
-| ![Overview](docs/screenshots/overview.png) | ![Try it out](docs/screenshots/try-it-out.png) | ![Authorize](docs/screenshots/authorize.png) |
-
-## Development
-
-```bash
+git clone https://github.com/saminwankwo/socketdocs.git
+cd socketdocs
 npm install
-npm run build        # UI bundle → packages/ui/dist → packages/express/ui-dist, then tsc -b
-npm test             # vitest across all workspaces
-npm run lint
-npm run check:examples
+npm run build
+npm test
 ```
 
-Design decisions made during the `1.0.0-alpha.0` redesign are recorded in [DECISIONS.md](DECISIONS.md);
-the full changelog is in [CHANGELOG.md](CHANGELOG.md).
+Try your local build in another project without publishing to npm:
+
+```bash
+# in socketdocs
+mkdir -p /tmp/sd && npm pack -w packages/core -w packages/express --pack-destination /tmp/sd
+
+# in your project
+npm install /tmp/sd/socketdocs-core-*.tgz /tmp/sd/socketdocs-express-*.tgz
+```
+
+Prefer tarballs (or [`yalc`](https://github.com/wclr/yalc)) over `npm link`. A symlinked package can resolve its own copy of `socket.io`, and discovery then patches the wrong one. Run `npm ls socket.io` in your project and confirm there is exactly one copy.
+
+---
+
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the package layout and how to run the pack test.
 
 ## License
 
-MIT © Nwankwo Samuel
+MIT © [Nwankwo Samuel](https://github.com/saminwankwo)
