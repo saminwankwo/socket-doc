@@ -45,6 +45,19 @@ describe("EventRegistry", () => {
     expect(r.toSpec().namespaces["/"].events["ping"].source).toBe("declared");
   });
 
+  it("observe can record a custom source (NestJS decorator discovery)", () => {
+    const r = makeRegistry();
+    r.observe("/chat", "raw_event", { direction: "client_to_server", source: "decorator" });
+    expect(r.toSpec().namespaces["/chat"].events["raw_event"].source).toBe("decorator");
+
+    // a richer source never downgrades a declared event
+    r.observe("/chat", "raw_event", { source: "sniffed" });
+    expect(r.toSpec().namespaces["/chat"].events["raw_event"].source).toBe("decorator");
+    r.declare("/chat", "raw_event", { summary: "declared later" });
+    r.observe("/chat", "raw_event", { source: "decorator" });
+    expect(r.toSpec().namespaces["/chat"].events["raw_event"].source).toBe("declared");
+  });
+
   it("supports multiple namespaces", () => {
     const r = makeRegistry();
     r.observe("/", "ping");

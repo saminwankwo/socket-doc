@@ -47,6 +47,7 @@
     "globals": "^17.6.0",
     "lightningcss": "^1.32.0",
     "prettier": "^3.8.3",
+    "reflect-metadata": "^0.2.2",
     "typescript": "^6.0.3"
   }
 }

@@ -80,7 +80,24 @@ function getAllNamespaces(io: SocketIOServer): Namespace[] {
 }
 
 /**
- * Instruments a Socket.IO Server instance to automatically sniff incoming and outgoing events.
+ * A single Namespace (not a Server) can be instrumented too: NestJS gateways
+ * expose either the root Socket.IO server or their namespace via
+ * `@WebSocketServer()`.
+ */
+function looksLikeNamespace(value: unknown): value is Namespace {
+  const candidate = value as any;
+  return (
+    !!candidate &&
+    typeof candidate === "object" &&
+    typeof candidate.of !== "function" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.on === "function" &&
+    typeof candidate.emit === "function"
+  );
+}
+
+/**
+ * Instruments a Socket.IO Server (or a single Namespace) to automatically sniff incoming and outgoing events.
  */
 export function instrumentSocketIO(
   io: SocketIOServer,
@@ -100,8 +117,7 @@ export function instrumentSocketIO(
       const originalOnce = socket.once.bind(socket);
 
       const wrapRegistration = (
-        origMethod: (ev: string, fn: (...args: any[]) => void) => any,
-        isOnce: boolean
+        origMethod: (ev: string, fn: (...args: any[]) => void) => any
       ) => {
         return function (eventName: string, listener: (...args: any[]) => void) {
           try {
@@ -155,8 +171,8 @@ export function instrumentSocketIO(
         };
       };
 
-      socket.on = wrapRegistration(originalOn, false) as any;
-      socket.once = wrapRegistration(originalOnce, true) as any;
+      socket.on = wrapRegistration(originalOn) as any;
+      socket.once = wrapRegistration(originalOnce) as any;
 
       // 2. Hook outgoing events (server -> client) via socket.onAnyOutgoing if supported (Socket.IO >= 4.5)
       if (typeof (socket as any).onAnyOutgoing === "function") {
@@ -203,13 +219,29 @@ export function instrumentSocketIO(
       const namespaceName = nsp.name || "/";
       registry.namespace(namespaceName);
 
-      nsp.on("connection", (socket: Socket) => {
+      const connectionListener = (socket: Socket) => {
         hookSocket(namespaceName, socket);
-      });
+      };
+
+      // prependListener (available on Socket.IO namespaces) makes our hook run
+      // BEFORE handlers registered by the framework (e.g. NestJS gateway
+      // connection handlers), so events emitted while handling a connection
+      // and handlers registered from there are still captured.
+      if (typeof (nsp as any).prependListener === "function") {
+        (nsp as any).prependListener("connection", connectionListener);
+      } else {
+        nsp.on("connection", connectionListener);
+      }
     } catch {
       // Defensive wrapping
     }
   };
+
+  // A bare Namespace was passed in: hook just that namespace.
+  if (looksLikeNamespace(io)) {
+    hookNamespace(io as unknown as Namespace);
+    return;
+  }
 
   try {
     // Hook all existing namespaces

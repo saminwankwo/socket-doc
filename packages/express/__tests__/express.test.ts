@@ -41,7 +41,7 @@ describe("@socketdocs/express", () => {
         }
       });
 
-      socket.on("untyped_event", (data) => {
+      socket.on("untyped_event", (_data) => {
         // fire and forget
       });
     });
@@ -73,6 +73,13 @@ describe("@socketdocs/express", () => {
     const res = await fetch(`${baseUrl}/socket-docs`, { redirect: "manual" });
     expect(res.status).toBe(301);
     expect(res.headers.get("location")).toBe("/socket-docs/");
+  });
+
+  it("serves the UI at the trailing-slash path without redirecting forever", async () => {
+    const res = await fetch(`${baseUrl}/socket-docs/`);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("<!DOCTYPE html>");
   });
 
   it("serves GET /socket-docs/spec.json with valid SocketDocsSpec", async () => {

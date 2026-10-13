@@ -1,6 +1,6 @@
 import { Router, static as expressStatic } from "express";
 import type { Request, Response, NextFunction, RequestHandler } from "express";
-import type { EventRegistry, SecuritySpec } from "@socketdocs/core";
+import type { EventRegistry } from "@socketdocs/core";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { existsSync } from "fs";
@@ -94,17 +94,67 @@ export function createDocsRouter(
     // Serve static files
     router.use(expressStatic(uiDistPath));
 
-    // Fallback route for SPA
-    router.get("*", (_req: Request, res: Response) => {
+    // SPA fallback. A plain middleware (instead of a "*" route) keeps this
+    // working on both Express 4 and Express 5.
+    router.use((_req: Request, res: Response) => {
       res.sendFile(join(uiDistPath, "index.html"));
     });
   } else {
     // Fallback if ui-dist is missing
-    router.get("*", (_req: Request, res: Response) => {
+    router.use((_req: Request, res: Response) => {
       res.setHeader("Content-Type", "text/html");
       res.status(200).send(MISSING_UI_HTML);
     });
   }
 
   return router;
+}
+
+export interface MountDocsOptions {
+  /** Mount path of the docs UI, e.g. "/socket-docs". */
+  path?: string;
+  auth?: { username: string; password: string } | RequestHandler;
+}
+
+/** Minimal shape of an Express app (or Nest's Express adapter instance). */
+export type ExpressAppLike = {
+  get: (...args: any[]) => any;
+  use: (...args: any[]) => any;
+};
+
+/**
+ * Mounts the docs UI at `path` on an Express app:
+ *
+ * - `GET <path>` (no trailing slash) 301-redirects to `<path>/` so that the
+ *   relative `./spec.json` and asset URLs in the UI resolve correctly.
+ * - `GET <path>/spec.json` serves the live spec.
+ * - everything else under `<path>` is served from the bundled UI.
+ *
+ * This is the single implementation of routes, auth and static serving shared
+ * by `@socketdocs/express` and `@socketdocs/nestjs`.
+ */
+export function mountDocs(
+  app: ExpressAppLike,
+  registry: EventRegistry,
+  options: MountDocsOptions = {}
+): string {
+  const mountPath = options.path ?? "/socket-docs";
+  const stripped = mountPath.replace(/^\/+|\/+$/g, "");
+  const normalizedPath = stripped ? `/${stripped}` : "/socket-docs";
+
+  app.get(normalizedPath, (req: any, res: any, next: any) => {
+    // Express treats "/path" and "/path/" as the same route, so only redirect
+    // requests that are actually missing the trailing slash.
+    if (typeof req.path === "string" && req.path !== normalizedPath) {
+      return next();
+    }
+    const queryIndex = typeof req.url === "string" ? req.url.indexOf("?") : -1;
+    const query = queryIndex >= 0 ? req.url.slice(queryIndex) : "";
+    res.redirect(301, `${normalizedPath}/${query}`);
+  });
+
+  const router = createDocsRouter(registry, { auth: options.auth });
+  app.use(normalizedPath, router);
+
+  return normalizedPath;
 }

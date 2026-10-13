@@ -13,6 +13,12 @@ import { normalizeSchema, type JSONSchema } from "./normalize.js";
 export interface ObserveInfo {
   direction?: Direction;
   kind?: EventKind;
+  /**
+   * Source to record when the event is observed for the first time.
+   * Defaults to "sniffed". NestJS discovery uses "decorator".
+   * It never downgrades an event that was already declared.
+   */
+  source?: EventSource;
 }
 
 export interface EventDeclaration {
@@ -110,13 +116,21 @@ export class EventRegistry {
             name: eventName,
             namespace: nsName,
             direction: info.direction ?? "client_to_server",
-            source: "sniffed",
+            source: info.source ?? "sniffed",
           },
           declared: new Set(),
         };
         if (info.kind) stored.spec.kind = info.kind;
         nsEvents.set(eventName, stored);
       } else {
+        // Upgrade sniffed events to a richer source (e.g. "decorator"), never downgrade.
+        if (
+          info.source &&
+          info.source !== "sniffed" &&
+          stored.spec.source === "sniffed"
+        ) {
+          stored.spec.source = info.source;
+        }
         if (info.direction && !stored.declared.has("direction")) {
           if (stored.spec.direction === "server_to_client" && info.direction === "client_to_server") {
             stored.spec.direction = "bidirectional";

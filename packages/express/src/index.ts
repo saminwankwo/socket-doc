@@ -11,7 +11,7 @@ import {
 } from "@socketdocs/core";
 import type { ZodTypeAny } from "zod";
 import { instrumentSocketIO } from "./instrument.js";
-import { createDocsRouter } from "./router.js";
+import { createDocsRouter, mountDocs } from "./router.js";
 
 export interface SocketDocsOptions {
   path?: string;
@@ -67,10 +67,6 @@ class SocketDocsInstanceImpl implements SocketDocsInstance {
 
 export class SocketDocs {
   static setup(app: Express, io: SocketIOServer, options: SocketDocsOptions): SocketDocsInstance {
-    const mountPath = options.path ?? "/socket-docs";
-    // Normalize mount path: strip trailing slash
-    const normalizedPath = mountPath.replace(/\/+$/, "") || "/socket-docs";
-
     // 1. Resolve socketPath (default io.path() or /socket.io)
     let socketPath = options.socketPath;
     if (!socketPath) {
@@ -99,24 +95,17 @@ export class SocketDocs {
       captureExamples: options.captureExamples === true,
     });
 
-    // 4. Mount redirect without trailing slash: 301 redirect to <path>/
-    app.get(normalizedPath, (req, res) => {
-      const target = `${normalizedPath}/${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`;
-      res.redirect(301, target);
-    });
-
-    // 5. Mount the docs router
-    const router = createDocsRouter(registry, {
+    // 4. Mount redirect + router + bundled UI (shared with @socketdocs/nestjs)
+    mountDocs(app, registry, {
+      path: options.path,
       auth: options.auth,
     });
-
-    app.use(normalizedPath, router);
 
     return new SocketDocsInstanceImpl(registry);
   }
 }
 
-export { createDocsRouter };
+export { createDocsRouter, mountDocs, instrumentSocketIO };
 export type { SnifferOptions } from "./instrument.js";
-export type { DocsRouterOptions } from "./router.js";
+export type { DocsRouterOptions, MountDocsOptions, ExpressAppLike } from "./router.js";
 
