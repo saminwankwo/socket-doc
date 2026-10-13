@@ -29,6 +29,7 @@ SocketDocs is code-first: an adapter's job is to get a running server's events i
 The documentation UI is built with React and Tailwind CSS in [packages/ui/](packages/ui/).
 
 - To develop locally: `npm run dev -w @socketdocs/ui`.
+- To run the packaging smoke test: `./scripts/pack-test.sh`.
 - To run the responsive Playwright suite: `npm run test:e2e -w @socketdocs/ui` (it starts the `examples/express-chat` server automatically).
 - We welcome improvements to the **Playground**, **Schema Visualization**, and **Theming**.
 

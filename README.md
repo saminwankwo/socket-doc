@@ -8,7 +8,7 @@ Mount one line on your Express server and get an interactive docs page at `/sock
 SocketDocs.setup(app, io, { title: 'Chat API', version: '1.0.0' });
 ```
 
-> **Status:** Express is supported. NestJS support is in progress (see [Roadmap](#roadmap)).
+> **Status:** Express and NestJS are supported (Socket.IO v4 only).
 
 ---
 
@@ -142,7 +142,7 @@ SocketDocs.setup(app, io, {
   version: '1.0.0',
   description: '...',
   socketPath: '/socket.io', // your Socket.IO "path" option
-  security: [{ name: 'token', type: 'bearer', in: 'auth' }],
+  security: [{ name: 'token', type: 'apiKey', in: 'auth' }],
   auth: { username: 'admin', password: 'secret' }, // or an Express middleware
   enabled: process.env.NODE_ENV !== 'production',
 });
@@ -190,9 +190,9 @@ Declared events appear immediately, even before anyone connects.
 
 ---
 
-## NestJS (in progress)
+## NestJS
 
-The planned API mirrors `SwaggerModule`:
+The API mirrors `SwaggerModule`:
 
 ```ts
 SocketDocsModule.setup('/socket-docs', app, {
@@ -219,13 +219,13 @@ The docs page lists your API's events and lets visitors send real messages to yo
 
 ```bash
 # Download the spec from a running server
-npx socketdocs export --url http://localhost:3000/socket-docs -o spec.json
+curl http://localhost:3000/socket-docs/spec.json -o spec.json
 
 # Lint the spec
-npx socketdocs lint spec.json
+npx socketdocs lint --file spec.json
 
 # Export as AsyncAPI 3.0
-npx socketdocs asyncapi spec.json -o asyncapi.json
+npx socketdocs export-asyncapi --file spec.json -o asyncapi.json
 ```
 
 ---
@@ -236,8 +236,8 @@ npx socketdocs asyncapi spec.json -o asyncapi.json
 | --------------------- | ---------------------------------------------------------------------------------------------- |
 | `@socketdocs/core`    | Spec model, schema normalization (Zod / JSON Schema), event registry, linting, AsyncAPI export |
 | `@socketdocs/express` | Express mount, Socket.IO discovery, bundled docs UI                                            |
-| `@socketdocs/nestjs`  | NestJS module and decorators _(in progress)_                                                   |
-| `@socketdocs/cli`     | Spec export, lint and AsyncAPI commands                                                        |
+| `@socketdocs/nestjs`  | NestJS module and decorators                                                                   |
+| `@socketdocs/cli`     | Spec lint and AsyncAPI 3.0 export                                                              |
 
 ---
 
@@ -245,7 +245,7 @@ npx socketdocs asyncapi spec.json -o asyncapi.json
 
 ```bash
 git clone https://github.com/saminwankwo/socket-doc.git
-cd socketdocs
+cd socket-doc
 npm install
 npm run build
 npm test
