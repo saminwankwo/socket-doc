@@ -193,6 +193,25 @@ export class EventRegistry {
     this.emit();
   }
 
+  /**
+   * Stores a sample payload captured from live traffic (used when
+   * `captureExamples` is enabled). Unlike `declare`, this never marks the
+   * event as documented: captured examples are sniffing data.
+   * The first example wins; later samples are ignored.
+   */
+  captureExample(nsName: string, eventName: string, example: unknown): void {
+    try {
+      const stored = this.getEvent(nsName, eventName);
+      if (!stored) return;
+      if (stored.spec.examples && stored.spec.examples.length > 0) return;
+      stored.spec.examples = [example];
+      this.namespaces.get(nsName)!.events[eventName] = stored.spec;
+      this.emit();
+    } catch {
+      // sniffing must never throw into user code
+    }
+  }
+
   namespace(name: string, description?: string): void {
     const nsEvents = this.ensureNamespace(name);
     const ns = this.namespaces.get(name)!;

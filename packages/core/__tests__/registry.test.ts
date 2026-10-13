@@ -45,6 +45,21 @@ describe("EventRegistry", () => {
     expect(r.toSpec().namespaces["/"].events["ping"].source).toBe("declared");
   });
 
+  it("captureExample stores the first sample without marking the event declared", () => {
+    const r = makeRegistry();
+    r.observe("/", "typing");
+    r.captureExample("/", "typing", { roomId: "lobby" });
+    r.captureExample("/", "typing", { roomId: "ignored" });
+
+    const evt = r.toSpec().namespaces["/"].events["typing"];
+    expect(evt.source).toBe("sniffed");
+    expect(evt.examples).toEqual([{ roomId: "lobby" }]);
+
+    // unknown events are left alone (the sniffer observes before capturing)
+    r.captureExample("/", "nope", {});
+    expect(r.toSpec().namespaces["/"].events["nope"]).toBeUndefined();
+  });
+
   it("observe can record a custom source (NestJS decorator discovery)", () => {
     const r = makeRegistry();
     r.observe("/chat", "raw_event", { direction: "client_to_server", source: "decorator" });

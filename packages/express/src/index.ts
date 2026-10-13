@@ -5,6 +5,7 @@ import {
   type Direction,
   type ErrorSpec,
   type EventDeclaration as CoreEventDeclaration,
+  type EventKind,
   type JSONSchema,
   type SecuritySpec,
   type SocketDocsSpec,
@@ -30,6 +31,8 @@ export interface EventDeclaration {
   summary?: string;
   description?: string;
   direction?: Direction;
+  /** `request_response` when the client is expected to pass an ack callback. */
+  kind?: EventKind;
   payload?: ZodTypeAny | JSONSchema;
   response?: ZodTypeAny | JSONSchema;
   examples?: unknown[];

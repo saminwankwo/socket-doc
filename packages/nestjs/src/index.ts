@@ -129,32 +129,52 @@ function isExpressApp(instance: any): boolean {
   return typeof instance.handle === "function";
 }
 
-/** Collects instance wrappers from DiscoveryService, falling back to the ModulesContainer. */
+/**
+ * Looks up a provider instance in the modules container without going through
+ * `app.get()`: Nest wraps `app.*` calls in an ExceptionsZone whose default
+ * teardown is `process.exit(1)`, so a failed lookup must never happen there.
+ */
+function findProviderInstance(modules: ModulesContainer, token: unknown): any | undefined {
+  try {
+    for (const mod of modules.values()) {
+      const wrapper = (mod as any).providers?.get?.(token);
+      if (wrapper && wrapper.instance) return wrapper.instance;
+    }
+  } catch {
+    // ignore malformed modules
+  }
+  return undefined;
+}
+
+/**
+ * Collects instance wrappers from DiscoveryService (when the user imported
+ * DiscoveryModule), falling back to a plain scan of the modules container.
+ */
 function collectWrappers(app: INestApplication): any[] {
+  let modules: ModulesContainer | undefined;
   try {
-    const discovery = (app as any).get(DiscoveryService, { strict: false });
-    if (discovery && typeof discovery.getProviders === "function") {
+    modules = (app as any).get(ModulesContainer, { strict: false }) as ModulesContainer | undefined;
+  } catch {
+    modules = undefined;
+  }
+
+  if (!modules || typeof modules.values !== "function") return [];
+
+  const discovery = findProviderInstance(modules, DiscoveryService);
+  if (discovery && typeof discovery.getProviders === "function") {
+    try {
       return [...discovery.getProviders(), ...discovery.getControllers()];
+    } catch {
+      // fall back to a container scan
     }
-  } catch {
-    // DiscoveryModule not imported; fall back below
   }
 
-  try {
-    const modules = (app as any).get(ModulesContainer, { strict: false });
-    if (modules && typeof modules.values === "function") {
-      const wrappers: any[] = [];
-      for (const mod of modules.values()) {
-        if (mod?.providers) wrappers.push(...mod.providers.values());
-        if (mod?.controllers) wrappers.push(...mod.controllers.values());
-      }
-      return wrappers;
-    }
-  } catch {
-    // no container available
+  const wrappers: any[] = [];
+  for (const mod of modules.values()) {
+    if (mod?.providers) wrappers.push(...mod.providers.values());
+    if (mod?.controllers) wrappers.push(...mod.controllers.values());
   }
-
-  return [];
+  return wrappers;
 }
 
 class SocketDocsNestInstanceImpl implements SocketDocsInstance {
@@ -218,12 +238,10 @@ export class SocketDocsModule {
       registry.namespace(namespace);
 
       const prototype = Object.getPrototypeOf(instance);
+      const metadataScanner = new MetadataScanner();
       let methodNames: string[];
       try {
-        const scanner = (app as any).get(MetadataScanner, { strict: false }) as MetadataScanner | undefined;
-        methodNames = scanner
-          ? scanner.getAllMethodNames(prototype)
-          : Object.getOwnPropertyNames(prototype);
+        methodNames = metadataScanner.getAllMethodNames(prototype);
       } catch {
         methodNames = Object.getOwnPropertyNames(prototype);
       }

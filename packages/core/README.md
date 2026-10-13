@@ -1,112 +1,111 @@
 # @socketdocs/core
 
-The core engine for **SocketDocs**, an OpenAPI-style documentation and validation framework for WebSocket APIs.
+The spec model and event registry at the heart of **SocketDocs** — Swagger-style documentation for Socket.IO. This package has **no dependency on Socket.IO or Express**: it defines the one canonical spec shape (`SocketDocsSpec`), how schemas are normalized, and how events are collected and turned into a spec.
 
-## 🚀 Overview
+You normally don't install this directly — `@socketdocs/express` and `@socketdocs/nestjs` depend on it — but it is useful for tooling that reads or transforms `/spec.json`.
 
-SocketDocs brings order to the wild west of WebSocket APIs. It allows you to define a single, typed **Contract** for your events using [Zod](https://zod.dev), which then powers:
-- **Automatic Validation**: Incoming and outgoing payloads are automatically checked against your schemas.
-- **Auto-Generated Documentation**: Export your contract to a JSON specification that can be rendered in a UI.
-- **Consistency**: One source of truth for both your server-side logic and your API documentation.
-
-## 📦 Installation
+## Install
 
 ```bash
 npm install @socketdocs/core zod
 ```
 
-## 🛠️ Key Concepts
+## The spec model
 
-### **The Contract**
-The `Contract` is the heart of your API. It holds the metadata (name, version, description) and all the event definitions.
-
-```typescript
-import { createContract } from '@socketdocs/core';
-
-const contract = createContract({
-  name: 'Realtime Chat',
-  version: '0.2.0',
-  description: 'A professional chat API with room support.',
-});
+```ts
+import type { SocketDocsSpec, EventSpec, NamespaceSpec } from "@socketdocs/core";
 ```
 
-### **Namespaces**
-Just like Socket.IO, SocketDocs supports namespaces. If you don't need multiple namespaces, use the `default` one.
+A `SocketDocsSpec` looks like:
 
-```typescript
-const chatNamespace = contract.namespace('chat');
-const adminNamespace = contract.namespace('admin');
-```
-
-### **Events**
-Events are defined with a name, a direction, and a payload schema. You can also chain `.errors()` to document possible error responses.
-
-```typescript
-import { z } from 'zod';
-
-chatNamespace.event({
-  name: 'message',
-  direction: 'bidirectional', // 'client_to_server', 'server_to_client', or 'bidirectional'
-  summary: 'Send/Receive messages',
-  description: 'Used to broadcast chat messages to everyone in the room.',
-  payload: z.object({
-    user: z.string().min(3).max(20),
-    text: z.string().nonempty(),
-    timestamp: z.number().default(() => Date.now()),
-  }),
-}).errors([
-  { code: 'AUTH_FAILED', description: 'User not logged in' },
-  { code: 'RATE_LIMITED', description: 'Too many messages' }
-]);
-```
-
-### **Security**
-Document authentication requirements for your initial connection.
-
-```typescript
-const contract = createContract({
-  name: 'Secure API',
-  version: '1.0.0',
-  security: [
-    {
-      name: 'AuthToken',
-      type: 'apiKey',
-      in: 'header',
-      description: 'JWT token required for connection'
+```jsonc
+{
+  "specVersion": "1.0",
+  "info": { "title": "Chat API", "version": "1.0.0", "description": "Realtime chat" },
+  "servers": [{ "url": "http://localhost:3000", "label": "Local" }],
+  "socketPath": "/socket.io",
+  "security": [{ "name": "token", "type": "apiKey", "in": "auth" }],
+  "namespaces": {
+    "/chat": {
+      "name": "/chat",
+      "description": "Room-based chat",
+      "events": {
+        "send_message": {
+          "name": "send_message",
+          "namespace": "/chat",
+          "direction": "client_to_server",     // client_to_server | server_to_client | bidirectional
+          "kind": "request_response",          // fire_and_forget | request_response (optional)
+          "source": "declared",                // sniffed | declared | decorator
+          "summary": "Send a message to a room",
+          "payloadSchema": { /* JSON Schema */ },
+          "responseSchema": { /* JSON Schema, ack payload */ },
+          "errors": [{ "code": "INVALID_ROOM", "description": "Room does not exist" }],
+          "tags": ["chat"]
+        }
+      }
     }
-  ]
-});
-```
-
-## 📜 Generating Specifications
-
-You can export your entire contract as a JSON object, which follows the SocketDocs specification format.
-
-```typescript
-const spec = contract.generateSpec();
-console.log(JSON.stringify(spec, null, 2));
-```
-
-## 🧩 Plugin System
-
-SocketDocs is extensible. You can register plugins to hook into the event lifecycle (e.g., for logging, metrics, or custom transformations).
-
-```typescript
-contract.registerPlugin({
-  name: 'Logger',
-  version: '1.0.0',
-  onEvent(name, payload, namespace) {
-    console.log(`[SocketDocs] Incoming Event: ${namespace}/${name}`);
-  },
-  onResponse(name, response, namespace) {
-    console.log(`[SocketDocs] Outgoing Response: ${namespace}/${name}`);
-  },
-  onError(name, error, namespace) {
-    console.error(`[SocketDocs] Error in ${namespace}/${name}:`, error);
   }
-});
+}
 ```
 
-## ⚖️ License
+`EventSpec`, `NamespaceSpec`, `SecuritySpec`, `ErrorSpec`, `Direction`, `EventKind` and `EventSource` are all exported types.
 
-MIT
+## EventRegistry
+
+`EventRegistry` holds events in memory and emits a change notification for every update.
+
+```ts
+import { EventRegistry } from "@socketdocs/core";
+
+const registry = new EventRegistry({
+  info: { title: "Chat API", version: "1.0.0" },
+  socketPath: "/socket.io",
+});
+
+registry.onChange(() => console.log("spec changed"));
+
+// From sniffing: fills blanks only, never overwrites declared fields.
+registry.observe("/chat", "typing", { direction: "client_to_server" });
+
+// From declarations: wins over sniffed data, sets source: "declared".
+registry.declare("/chat", "send_message", {
+  summary: "Send a message to a room",
+  payload: z.object({ text: z.string(), roomId: z.string() }),
+});
+
+registry.namespace("/chat", "Room-based chat");
+const spec: SocketDocsSpec = registry.toSpec();
+```
+
+Merge rules:
+
+- Declared fields always win; sniffed data only fills blanks.
+- `source` starts as `sniffed`, becomes `decorator` when discovered from framework metadata (`observe` with `{ source: "decorator" }`) and `declared` once declared. It is never downgraded.
+- `observe()` swallows its own errors: sniffing must never break user code.
+
+## normalizeSchema
+
+Zod and JSON Schema inputs are converted **at registration time**:
+
+```ts
+import { normalizeSchema } from "@socketdocs/core";
+
+normalizeSchema(z.object({ id: z.string() })); // -> JSON Schema
+normalizeSchema({ type: "object" });           // treated as JSON Schema already
+normalizeSchema(undefined);                    // -> undefined
+```
+
+## lintSpec and toAsyncApi
+
+```ts
+import { lintSpec, toAsyncApi } from "@socketdocs/core";
+
+const issues = lintSpec(spec);   // [{ type: "error" | "warning", message, path }]
+const asyncapi = toAsyncApi(spec); // AsyncAPI 3.0 document
+```
+
+`lintSpec` flags missing descriptions, undeclared/duplicated event names, duplicate error codes and similar problems; `toAsyncApi` maps namespaces/channels, security schemes and event errors to an AsyncAPI 3.0 document (using `spec.servers` for the server list).
+
+## License
+
+MIT © Nwankwo Samuel

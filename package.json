@@ -35,6 +35,7 @@
     "build:ui": "cd packages/ui && npm run build",
     "copy:express-ui": "cd packages/express && npm run copy:ui",
     "test": "npm test --workspaces --if-present",
+    "check:examples": "node scripts/check-examples.mjs",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
   },

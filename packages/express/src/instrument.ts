@@ -145,17 +145,9 @@ export function instrumentSocketIO(
                   if (typeof payloadArg !== "function") {
                     const sample = truncateAndSanitize(payloadArg);
                     if (sample !== undefined) {
-                      registry.observe(namespaceName, eventName, {
-                        ...info,
-                      });
-                      // If spec has no examples yet, add it
-                      const currentSpec = registry.toSpec();
-                      const evSpec = currentSpec.namespaces[namespaceName]?.events[eventName];
-                      if (evSpec && (!evSpec.examples || evSpec.examples.length === 0)) {
-                        registry.declare(namespaceName, eventName, {
-                          examples: [sample],
-                        });
-                      }
+                      // Never uses declare(): a captured example must not mark
+                      // the event as documented.
+                      registry.captureExample(namespaceName, eventName, sample);
                     }
                   }
                 }
@@ -187,13 +179,7 @@ export function instrumentSocketIO(
                   if (typeof payloadArg !== "function") {
                     const sample = truncateAndSanitize(payloadArg);
                     if (sample !== undefined) {
-                      const currentSpec = registry.toSpec();
-                      const evSpec = currentSpec.namespaces[namespaceName]?.events[eventName];
-                      if (evSpec && (!evSpec.examples || evSpec.examples.length === 0)) {
-                        registry.declare(namespaceName, eventName, {
-                          examples: [sample],
-                        });
-                      }
+                      registry.captureExample(namespaceName, eventName, sample);
                     }
                   }
                 }
