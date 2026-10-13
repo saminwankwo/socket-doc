@@ -1,0 +1,22 @@
+{
+  "specVersion": "1.0",
+  "info": { "title": "Broken API", "version": "1.0.0" },
+  "namespaces": {
+    "/": {
+      "name": "/",
+      "events": {
+        "send_message": {
+          "name": "send_message",
+          "namespace": "/",
+          "direction": "client_to_server",
+          "source": "declared",
+          "errors": [
+            { "code": "BOOM", "description": "First failure" },
+            { "code": "BOOM", "description": "Duplicate code" },
+            { "description": "Missing code" }
+          ]
+        }
+      }
+    }
+  }
+}

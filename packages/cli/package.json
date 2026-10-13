@@ -1,0 +1,54 @@
+{
+  "name": "@socketdocs/cli",
+  "version": "1.0.0-alpha.0",
+  "type": "module",
+  "description": "Minimal CLI for SocketDocs: lint a spec and export it to AsyncAPI.",
+  "keywords": [
+    "socketdocs",
+    "cli",
+    "socket.io",
+    "asyncapi",
+    "lint",
+    "swagger"
+  ],
+  "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "directory": "packages/cli"
+  },
+  "bin": {
+    "socketdocs": "./dist/bin.js"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@socketdocs/core": "1.0.0-alpha.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.5"
+  }
+}

@@ -20,6 +20,7 @@
 - [The UI](#the-ui)
 - [Packages](#packages)
 - [Examples](#examples)
+- [CLI](#cli)
 - [Limitations](#limitations)
 - [Screenshots](#screenshots)
 - [Development](#development)
@@ -214,6 +215,7 @@ io.use((socket, next) => {
 | [`@socketdocs/core`](packages/core) | `packages/core` | `SocketDocsSpec` model, `EventRegistry`, `normalizeSchema`, `lintSpec`, `toAsyncApi`. No Socket.IO/Express imports. |
 | [`@socketdocs/express`](packages/express) | `packages/express` | `SocketDocs.setup(...)`, Socket.IO instrumentation, `spec.json` + bundled UI serving. |
 | [`@socketdocs/nestjs`](packages/nestjs) | `packages/nestjs` | `SocketDocsModule.setup(...)`, gateway discovery, `@SocketEvent`. |
+| [`@socketdocs/cli`](packages/cli) | `packages/cli` | `socketdocs lint` and `socketdocs export-asyncapi` (Node ≥ 18). |
 | `@socketdocs/ui` | `packages/ui` | The React SPA (private; its build is bundled into `@socketdocs/express`). |
 
 ## Examples
@@ -229,6 +231,22 @@ npm run start -w socketdocs-example-express-chat
 npm run start -w socketdocs-example-nest-chat
 npm run check:examples                  # end-to-end smoke check of express-chat
 ```
+
+## CLI
+
+`@socketdocs/cli` turns a spec — from a live server or a file — into lint results or an AsyncAPI
+document. It never loads TypeScript contracts, only `/spec.json` output.
+
+```bash
+npm install -g @socketdocs/cli
+
+socketdocs lint --url http://localhost:3000/socket-docs/spec.json
+socketdocs lint --file ./spec.json
+socketdocs export-asyncapi --url http://localhost:3000/socket-docs/spec.json -o asyncapi.json
+```
+
+`lint` exits `1` on errors (warnings alone exit `0`); both commands exit `2` on usage mistakes.
+`runCli()` is exported for programmatic use and never calls `process.exit`.
 
 ## Limitations
 
