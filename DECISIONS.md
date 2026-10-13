@@ -9,6 +9,23 @@ Judgment calls made during the `1.0.0-alpha.0` redesign.
 - **vitest only.** Removed `jest`, `ts-jest`, `@types/jest`, and `jest.config.cjs` from core and root.
 - **`examples/` workspace glob kept** with a `.gitkeep` placeholder; real examples arrive in Phase 7.
 
+## Phase 2
+
+- **One spec model, defined once.** `SocketDocsSpec` (plus `EventSpec`, `NamespaceSpec`, `Direction`, `EventKind`, `EventSource`, `SecuritySpec`, `ErrorSpec`) lives only in `packages/core/src/spec.ts`; the express package and the UI reference those types instead of declaring their own. `/spec.json` is `registry.toSpec()` verbatim — the same shape the UI parses.
+- **Deleted the whole contract-first core**: `contract.ts` (fluent `createContract`), `decorators.ts`, `plugins.ts`, `ui.ts` (`generateHtml`), `validation.ts`, `wsdoc.schema.json` and their tests, replaced by `spec.ts`, `registry.ts`, `normalize.ts` and rewritten `lint.ts` / `asyncapi.ts`.
+- **`EventSpec.source` (`sniffed | declared | decorator`)** exists so the UI can badge what still needs schemas; `EventRegistry.observe()` accepts it (default `sniffed`) and never downgrades, and `declare()` always sets `declared`. Sniffing errors are swallowed inside the registry — instrumentation must never break user code.
+- **Merge rules**: declared fields always win, sniffed data only fills blanks (`ensure` semantics in `observe`), and `observe()` ignores unknown fields — the sniffer cannot stomp documentation.
+- **`normalizeSchema` is duck-typed on `toJSONSchema()`**: Zod v4 schemas are converted at registration time; plain objects are treated as JSON Schema and pass through; anything else is dropped. No AJV, no zod-to-json-schema dependency.
+- **`zod` stays a real dependency of core** (not a peer) even though core's imports are type-only: it pins the major version the types were compiled against, and every real consumer passes zod schemas anyway.
+- **`toAsyncApi` targets AsyncAPI 3.0** with `spec.servers` mapped to server objects (falling back to a `development` server), security schemes into `components.securitySchemes`, and event errors into per-message traits.
+
+## Phase 3
+
+- **`packages/docs-server` renamed to `packages/ui` and made private.** It is never published on its own: its Vite build is copied into `@socketdocs/express` (`ui-dist/`) at build time, so installing the server package is all a consumer needs.
+- **Vite `base: './'`** so every asset URL is relative, and the SPA fetches `./spec.json` relative to the page — together this is what makes the UI work at any mount path with or without a trailing slash (re-verified at `/api-docs/sockets` during acceptance).
+- **The UI depends on `@socketdocs/core` types only** (no runtime import): one shared `SocketDocsSpec` type keeps the data pipeline honest without bundling core into the browser.
+- **The missing-UI fallback was replaced by a build step**: `npm run build` builds the UI first, then copies it, and `@socketdocs/express` serves a small explanatory HTML page only if `ui-dist/` is truly absent (e.g. a broken install) instead of crashing.
+
 ## Phase 4
 
 - **Created `@socketdocs/express`**: Provides `SocketDocs.setup(app, io, options)` with auto-sniffing and UI/spec serving.
@@ -53,3 +70,8 @@ Judgment calls made during the `1.0.0-alpha.0` redesign.
 - **Minimal shape validation before use** (`info` and `namespaces` must be objects) so users get a clear "not a SocketDocs spec" instead of a stack trace from `lintSpec`/`toAsyncApi`. `--url` and `--file` are mutually exclusive.
 - **Version is read from `package.json` at runtime** relative to `import.meta.url`, which resolves correctly both from `src` (tests) and `dist` (published).
 - **Not wired into `check:examples`**: the CLI's vitest suite already includes a live-server `--url` test; the binary was additionally verified manually against the running express-chat example (`lint` and `export-asyncapi`).
+
+## Final acceptance
+
+- **Bearer handshake bug fixed**: the Authorize modal sent `auth: { token: "Bearer <value>" }` (prefix included), which failed every `auth.token === <secret>` server check — including the express-chat example the README tells users to try. It now sends the raw value, matching the documented `auth: { token }` behavior. The handshake-building logic was extracted to `src/utils/handshake.ts` as a pure `buildHandshake()` (same pattern as `sampleFromSchema`) so it is unit-tested rather than trapped in the hook.
+- **Leftover Vite-scaffold favicon removed** from `packages/ui/index.html`: it pointed at a nonexistent `/vite.svg` with an absolute URL that would bypass any mount path (it only "worked" because the SPA fallback served HTML for it).

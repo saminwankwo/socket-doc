@@ -1,14 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { buildHandshake, type AuthConfig } from '../utils/handshake';
 
-export interface AuthConfig {
-  type: 'none' | 'bearer' | 'apiKey' | 'custom';
-  token?: string;
-  apiKey?: string;
-  customAuthJson?: string;
-  queryParamKey?: string;
-  queryParamValue?: string;
-}
+export type { AuthConfig } from '../utils/handshake';
 
 export interface LogEntry {
   id: string;
@@ -69,30 +63,6 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
     setLogs([]);
   }, []);
 
-  const buildHandshakeOptions = useCallback((auth: AuthConfig) => {
-    const authPayload: Record<string, any> = {};
-    const queryParams: Record<string, string> = {};
-
-    if (auth.type === 'bearer' && auth.token) {
-      authPayload.token = `Bearer ${auth.token}`;
-    } else if (auth.type === 'apiKey' && auth.apiKey) {
-      authPayload.apiKey = auth.apiKey;
-    } else if (auth.type === 'custom' && auth.customAuthJson) {
-      try {
-        const parsed = JSON.parse(auth.customAuthJson);
-        Object.assign(authPayload, parsed);
-      } catch {
-        // ignore JSON syntax errors in payload
-      }
-    }
-
-    if (auth.queryParamKey && auth.queryParamValue) {
-      queryParams[auth.queryParamKey] = auth.queryParamValue;
-    }
-
-    return { authPayload, queryParams };
-  }, []);
-
   // Connect or retrieve socket for a specific namespace
   const getOrCreateSocket = useCallback(
     (ns: string) => {
@@ -101,7 +71,7 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
         return socketsRef.current[normalizedNs];
       }
 
-      const { authPayload, queryParams } = buildHandshakeOptions(authConfigRef.current);
+      const { authPayload, queryParams } = buildHandshake(authConfigRef.current);
 
       const nsUrl = normalizedNs === '/' ? serverUrl : `${serverUrl.replace(/\/+$/, '')}${normalizedNs}`;
       const newSocket = io(nsUrl, {
@@ -130,7 +100,7 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
       setSockets((prev) => ({ ...prev, [normalizedNs]: newSocket }));
       return newSocket;
     },
-    [serverUrl, socketPath, buildHandshakeOptions, addLog]
+    [serverUrl, socketPath, addLog]
   );
 
   const setAuthConfig = useCallback(
