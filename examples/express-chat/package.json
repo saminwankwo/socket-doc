@@ -12,8 +12,5 @@
     "express": "^4.22.2",
     "socket.io": "^4.8.3",
     "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "socket.io-client": "^4.8.3"
   }
 }

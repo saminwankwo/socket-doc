@@ -14,7 +14,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "url": "git+https://github.com/saminwankwo/socket-doc.git",
     "directory": "packages/nestjs"
   },
   "main": "dist/index.js",

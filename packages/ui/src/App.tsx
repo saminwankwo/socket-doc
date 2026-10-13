@@ -9,7 +9,7 @@ import { AuthorizeModal } from './components/AuthorizeModal';
 import { Footer } from './components/Footer';
 import type { SocketDocsSpec } from '@socketdocs/core';
 
-export const App = () => {
+const App = () => {
   const [spec, setSpec] = useState<SocketDocsSpec | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'docs' | 'playground'>('docs');

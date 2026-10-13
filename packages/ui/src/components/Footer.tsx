@@ -22,7 +22,7 @@ export const Footer: React.FC<FooterProps> = ({ theme }) => {
         </p>
         <nav className="flex items-center gap-4">
           <a
-            href="https://github.com/saminwankwo/socketdocs"
+            href="https://github.com/saminwankwo/socket-doc"
             target="_blank"
             rel="noopener noreferrer"
             className={linkClass}
@@ -30,7 +30,7 @@ export const Footer: React.FC<FooterProps> = ({ theme }) => {
             <Github size={14} /> GitHub
           </a>
           <a
-            href="https://github.com/saminwankwo/socketdocs/issues"
+            href="https://github.com/saminwankwo/socket-doc/issues"
             target="_blank"
             rel="noopener noreferrer"
             className={linkClass}
@@ -55,5 +55,3 @@ export const Footer: React.FC<FooterProps> = ({ theme }) => {
     </footer>
   );
 };
-
-export default Footer;

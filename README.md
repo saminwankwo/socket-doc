@@ -239,7 +239,7 @@ npx socketdocs asyncapi spec.json -o asyncapi.json
 ## Local development
 
 ```bash
-git clone https://github.com/saminwankwo/socketdocs.git
+git clone https://github.com/saminwankwo/socket-doc.git
 cd socketdocs
 npm install
 npm run build
