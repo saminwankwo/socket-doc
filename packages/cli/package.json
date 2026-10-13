@@ -1,7 +1,6 @@
 {
   "name": "@socketdocs/cli",
   "version": "1.0.0-alpha.0",
-  "type": "module",
   "description": "Minimal CLI for SocketDocs: lint a spec and export it to AsyncAPI.",
   "keywords": [
     "socketdocs",
@@ -15,12 +14,17 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "url": "git+https://github.com/saminwankwo/socket-doc.git",
     "directory": "packages/cli"
   },
-  "bin": {
-    "socketdocs": "./dist/bin.js"
+  "homepage": "https://github.com/saminwankwo/socket-doc#readme",
+  "bugs": {
+    "url": "https://github.com/saminwankwo/socket-doc/issues"
   },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -31,24 +35,27 @@
       "default": "./dist/index.js"
     }
   },
+  "bin": {
+    "socketdocs": "./dist/bin.js"
+  },
   "files": [
     "dist",
     "README.md"
   ],
-  "engines": {
-    "node": ">=18"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
+  "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint .",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
     "@socketdocs/core": "1.0.0-alpha.0"
   },
   "devDependencies": {
     "vitest": "^2.1.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
