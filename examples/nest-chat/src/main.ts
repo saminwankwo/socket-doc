@@ -1,8 +1,8 @@
-import "reflect-metadata";
-import { NestFactory } from "@nestjs/core";
-import { IoAdapter } from "@nestjs/platform-socket.io";
-import { SocketDocsModule } from "@socketdocs/nestjs";
-import { AppModule } from "./app.module.js";
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { SocketDocsModule } from '@socketdocs/nestjs';
+import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,11 +13,11 @@ async function bootstrap() {
 
   // Mount the docs before listen(): gateway events are discovered at startup,
   // i.e. BEFORE any client connects (unlike the Express sniffing path).
-  SocketDocsModule.setup("/socket-docs", app, {
-    title: "Nest Chat API",
-    version: "1.0.0",
-    description: "Minimal NestJS gateway example for SocketDocs",
-    servers: [{ url: "http://localhost:3001", label: "Local" }],
+  SocketDocsModule.setup('/socket-docs', app, {
+    title: 'Nest Chat API',
+    version: '1.0.0',
+    description: 'Minimal NestJS gateway example for SocketDocs',
+    servers: [{ url: 'http://localhost:3001', label: 'Local' }],
   });
 
   const port = Number(process.env.PORT ?? 3001);

@@ -34,22 +34,22 @@ socketdocs export-asyncapi --file ./spec.json          # printed to stdout
 
 ## Options
 
-| Option | Description |
-|---|---|
-| `--url <url>` | Load the spec from a live server (e.g. `.../socket-docs/spec.json`). |
-| `--file <path>` | Load the spec from a local JSON file. |
-| `-o`, `--output <path>` | Write the AsyncAPI document to a file instead of stdout. |
-| `-h`, `--help` | Show usage. |
-| `-V`, `--version` | Print the version. |
+| Option                  | Description                                                          |
+| ----------------------- | -------------------------------------------------------------------- |
+| `--url <url>`           | Load the spec from a live server (e.g. `.../socket-docs/spec.json`). |
+| `--file <path>`         | Load the spec from a local JSON file.                                |
+| `-o`, `--output <path>` | Write the AsyncAPI document to a file instead of stdout.             |
+| `-h`, `--help`          | Show usage.                                                          |
+| `-V`, `--version`       | Print the version.                                                   |
 
 `--url` and `--file` are mutually exclusive; one of them is required for both commands.
 
 ## Programmatic use
 
 ```ts
-import { runCli, loadSpec, parseArgs } from "@socketdocs/cli";
+import { runCli, loadSpec, parseArgs } from '@socketdocs/cli';
 
-const code = await runCli(["lint", "--file", "spec.json"], {
+const code = await runCli(['lint', '--file', 'spec.json'], {
   out: (line) => console.log(line),
   err: (line) => console.error(line),
 });

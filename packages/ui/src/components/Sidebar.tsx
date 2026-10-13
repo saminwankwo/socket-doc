@@ -37,7 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         name.toLowerCase().includes(q) ||
         (event.summary && event.summary.toLowerCase().includes(q)) ||
         (event.description && event.description.toLowerCase().includes(q)) ||
-        (event.tags && event.tags.some((t: string) => t.toLowerCase().includes(q)))
+        (event.tags &&
+          event.tags.some((t: string) => t.toLowerCase().includes(q)))
       );
     });
   });
@@ -58,7 +59,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Activity size={20} className="text-white" />
           </div>
           <div>
-            <h1 className={`font-bold text-lg tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+            <h1
+              className={`font-bold text-lg tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}
+            >
               {title || 'SocketDocs'}
             </h1>
           </div>
@@ -73,8 +76,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ? 'bg-blue-600/10 text-blue-400 font-semibold'
                   : 'bg-blue-50 text-blue-600 font-semibold'
                 : theme === 'dark'
-                ? 'hover:bg-slate-800 text-slate-400'
-                : 'hover:bg-slate-100 text-slate-600'
+                  ? 'hover:bg-slate-800 text-slate-400'
+                  : 'hover:bg-slate-100 text-slate-600'
             }`}
           >
             <Book size={18} />
@@ -88,8 +91,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ? 'bg-blue-600/10 text-blue-400 font-semibold'
                   : 'bg-blue-50 text-blue-600 font-semibold'
                 : theme === 'dark'
-                ? 'hover:bg-slate-800 text-slate-400'
-                : 'hover:bg-slate-100 text-slate-600'
+                  ? 'hover:bg-slate-800 text-slate-400'
+                  : 'hover:bg-slate-100 text-slate-600'
             }`}
           >
             <Terminal size={18} />
@@ -98,7 +101,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+            size={14}
+          />
           <input
             type="text"
             value={searchQuery}
@@ -113,7 +119,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Namespaces</h2>
+          <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+            Namespaces
+          </h2>
           <div className="space-y-1">
             {filteredNamespaces.map((ns) => {
               const count = Object.keys(namespaces[ns]?.events || {}).length;
@@ -127,8 +135,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         ? 'bg-slate-800 text-white font-medium'
                         : 'bg-slate-100 text-slate-900 font-semibold'
                       : theme === 'dark'
-                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                        ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
                   <span className="truncate">{ns}</span>

@@ -1,8 +1,11 @@
-export type Direction = "client_to_server" | "server_to_client" | "bidirectional";
+export type Direction =
+  | 'client_to_server'
+  | 'server_to_client'
+  | 'bidirectional';
 
-export type EventKind = "fire_and_forget" | "request_response";
+export type EventKind = 'fire_and_forget' | 'request_response';
 
-export type EventSource = "sniffed" | "declared" | "decorator";
+export type EventSource = 'sniffed' | 'declared' | 'decorator';
 
 export interface ErrorSpec {
   code: string | number;
@@ -11,8 +14,8 @@ export interface ErrorSpec {
 
 export interface SecuritySpec {
   name: string;
-  type: "apiKey" | "http" | "oauth2";
-  in?: "header" | "query" | "cookie" | "auth";
+  type: 'apiKey' | 'http' | 'oauth2';
+  in?: 'header' | 'query' | 'cookie' | 'auth';
   description?: string;
 }
 
@@ -40,7 +43,7 @@ export interface NamespaceSpec {
 }
 
 export interface SocketDocsSpec {
-  specVersion: "1.0";
+  specVersion: '1.0';
   info: { title: string; version: string; description?: string };
   servers?: Array<{ url: string; label?: string }>;
   socketPath?: string;

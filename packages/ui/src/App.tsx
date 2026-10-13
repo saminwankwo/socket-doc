@@ -21,7 +21,9 @@ const App = () => {
 
   // Connection URL defaults to window.location.origin
   const [socketUrl, setSocketUrl] = useState(() => {
-    return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    return typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://localhost:3000';
   });
 
   const {
@@ -72,7 +74,11 @@ const App = () => {
           const firstNs = Object.keys(data.namespaces)[0];
           setSelectedNamespace(firstNs);
         }
-        if (data.servers && data.servers.length > 0 && (!socketUrl || socketUrl === 'http://localhost:3000')) {
+        if (
+          data.servers &&
+          data.servers.length > 0 &&
+          (!socketUrl || socketUrl === 'http://localhost:3000')
+        ) {
           setSocketUrl(data.servers[0].url);
         }
         setLoading(false);
@@ -102,9 +108,12 @@ const App = () => {
     return (
       <div className="flex items-center justify-center min-h-dvh bg-slate-900 text-white">
         <div className="text-center p-8 bg-slate-800 rounded-xl shadow-xl border border-slate-700 max-w-md">
-          <h1 className="text-2xl font-bold text-red-400 mb-2">Spec Not Found</h1>
+          <h1 className="text-2xl font-bold text-red-400 mb-2">
+            Spec Not Found
+          </h1>
           <p className="text-slate-400 text-sm mb-4">
-            Ensure your documentation server is running and serves <code>./spec.json</code>.
+            Ensure your documentation server is running and serves{' '}
+            <code>./spec.json</code>.
           </p>
           <button
             onClick={loadSpec}
@@ -118,24 +127,30 @@ const App = () => {
   }
 
   const namespaces = spec.namespaces || {};
-  const currentNamespaceSpec = namespaces[selectedNamespace] || { name: selectedNamespace, events: {} };
+  const currentNamespaceSpec = namespaces[selectedNamespace] || {
+    name: selectedNamespace,
+    events: {},
+  };
   const currentEvents = currentNamespaceSpec.events || {};
 
   const totalEventCount = Object.values(namespaces).reduce(
     (acc, ns) => acc + Object.keys(ns.events || {}).length,
-    0
+    0,
   );
 
-  const filteredEvents = Object.entries(currentEvents).filter(([name, event]: [string, any]) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      name.toLowerCase().includes(q) ||
-      (event.summary && event.summary.toLowerCase().includes(q)) ||
-      (event.description && event.description.toLowerCase().includes(q)) ||
-      (event.tags && event.tags.some((t: string) => t.toLowerCase().includes(q)))
-    );
-  });
+  const filteredEvents = Object.entries(currentEvents).filter(
+    ([name, event]: [string, any]) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        name.toLowerCase().includes(q) ||
+        (event.summary && event.summary.toLowerCase().includes(q)) ||
+        (event.description && event.description.toLowerCase().includes(q)) ||
+        (event.tags &&
+          event.tags.some((t: string) => t.toLowerCase().includes(q)))
+      );
+    },
+  );
 
   const hasAuthorized = authConfig.type !== 'none';
 
@@ -154,13 +169,21 @@ const App = () => {
   const emptyNamespaceState = (
     <div
       className={`text-center py-12 px-6 rounded-xl border-2 border-dashed ${
-        theme === 'dark' ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-slate-50'
+        theme === 'dark'
+          ? 'border-slate-800 bg-slate-900/30'
+          : 'border-slate-200 bg-slate-50'
       }`}
     >
-      <Book size={40} className={`mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-slate-300'}`} />
-      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-        No events in <code className="text-blue-400">{selectedNamespace}</code> yet. Connect a client or declare
-        events with <code className="text-blue-400">docs.event()</code>.
+      <Book
+        size={40}
+        className={`mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-slate-300'}`}
+      />
+      <p
+        className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}
+      >
+        No events in <code className="text-blue-400">{selectedNamespace}</code>{' '}
+        yet. Connect a client or declare events with{' '}
+        <code className="text-blue-400">docs.event()</code>.
       </p>
     </div>
   );
@@ -168,7 +191,9 @@ const App = () => {
   return (
     <div
       className={`flex min-h-dvh w-full transition-colors duration-300 ${
-        theme === 'dark' ? 'bg-slate-950 text-slate-200' : 'bg-slate-50 text-slate-900'
+        theme === 'dark'
+          ? 'bg-slate-950 text-slate-200'
+          : 'bg-slate-50 text-slate-900'
       }`}
     >
       <Sidebar
@@ -196,7 +221,9 @@ const App = () => {
       <main className="flex min-h-dvh w-full min-w-0 flex-1 flex-col">
         <header
           className={`h-16 border-b transition-colors duration-300 ${
-            theme === 'dark' ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-white/80'
+            theme === 'dark'
+              ? 'border-slate-800 bg-slate-900/30'
+              : 'border-slate-200 bg-white/80'
           } backdrop-blur-md flex items-center justify-between gap-3 px-4 sm:px-8 sticky top-0 z-10`}
         >
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
@@ -205,16 +232,22 @@ const App = () => {
               aria-label="Open menu"
               aria-expanded={isSidebarOpen}
               className={`flex min-h-10 min-w-10 items-center justify-center rounded-lg transition-colors lg:hidden ${
-                theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                theme === 'dark'
+                  ? 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <Menu size={18} />
             </button>
 
             <div className="flex min-w-0 items-center gap-2 text-sm sm:gap-4">
-              <span className="hidden truncate text-slate-400 font-medium sm:inline">{spec.info.title}</span>
+              <span className="hidden truncate text-slate-400 font-medium sm:inline">
+                {spec.info.title}
+              </span>
               <span className="hidden text-slate-600 sm:inline">/</span>
-              <span className={`truncate font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
+              <span
+                className={`truncate font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}
+              >
                 {activeTab === 'docs' ? 'Documentation' : 'Playground'}
               </span>
             </div>
@@ -236,7 +269,9 @@ const App = () => {
               }`}
             >
               <Shield size={13} />
-              <span className="hidden sm:inline">{hasAuthorized ? 'Authorized' : 'Authorize'}</span>
+              <span className="hidden sm:inline">
+                {hasAuthorized ? 'Authorized' : 'Authorize'}
+              </span>
             </button>
 
             <button
@@ -250,7 +285,11 @@ const App = () => {
 
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              aria-label={
+                theme === 'dark'
+                  ? 'Switch to light theme'
+                  : 'Switch to dark theme'
+              }
               className="flex min-h-10 min-w-10 items-center justify-center text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50"
             >
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
@@ -276,26 +315,41 @@ const App = () => {
           {activeTab === 'docs' ? (
             <div className="space-y-8">
               <section className="mb-6">
-                <h1 className={`text-3xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                <h1
+                  className={`text-3xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}
+                >
                   {spec.info.title}
                 </h1>
-                <p className={`text-base leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-                  {spec.info.description || 'Socket.IO Realtime API Documentation'}
+                <p
+                  className={`text-base leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}
+                >
+                  {spec.info.description ||
+                    'Socket.IO Realtime API Documentation'}
                 </p>
               </section>
 
               {totalEventCount === 0 ? (
                 <div
                   className={`text-center py-16 px-6 rounded-xl border-2 border-dashed ${
-                    theme === 'dark' ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-slate-50'
+                    theme === 'dark'
+                      ? 'border-slate-800 bg-slate-900/30'
+                      : 'border-slate-200 bg-slate-50'
                   }`}
                 >
-                  <Book size={44} className={`mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-slate-300'}`} />
-                  <h3 className={`text-base font-semibold mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <Book
+                    size={44}
+                    className={`mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-slate-300'}`}
+                  />
+                  <h3
+                    className={`text-base font-semibold mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}
+                  >
                     No events discovered yet
                   </h3>
-                  <p className={`text-xs max-w-md mx-auto mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Events appear here after the first client connects to your server, or you can declare them with{' '}
+                  <p
+                    className={`text-xs max-w-md mx-auto mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}
+                  >
+                    Events appear here after the first client connects to your
+                    server, or you can declare them with{' '}
                     <code className="text-blue-400">docs.event(...)</code>.
                   </p>
                   <button
@@ -313,17 +367,27 @@ const App = () => {
                         theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                       }`}
                     >
-                      Namespace: <span className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{selectedNamespace}</span>
+                      Namespace:{' '}
+                      <span
+                        className={
+                          theme === 'dark' ? 'text-white' : 'text-slate-900'
+                        }
+                      >
+                        {selectedNamespace}
+                      </span>
                     </h2>
                     <span className="shrink-0 text-xs text-slate-500 font-mono">
-                      {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'}
+                      {filteredEvents.length}{' '}
+                      {filteredEvents.length === 1 ? 'event' : 'events'}
                     </span>
                   </div>
 
                   {!namespaceHasEvents ? (
                     emptyNamespaceState
                   ) : filteredEvents.length === 0 ? (
-                    <div className={`text-center py-12 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <div
+                      className={`text-center py-12 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}
+                    >
                       No events match your search.
                     </div>
                   ) : (
@@ -335,9 +399,16 @@ const App = () => {
                           namespace={selectedNamespace}
                           event={event}
                           theme={theme}
-                          isListening={listenedEvents[`${selectedNamespace}::${name}`] ?? false}
-                          onToggleListen={(shouldListen) => toggleListen(selectedNamespace, name, shouldListen)}
-                          onExecute={(payload, onAck) => emitEvent(selectedNamespace, name, payload, onAck)}
+                          isListening={
+                            listenedEvents[`${selectedNamespace}::${name}`] ??
+                            false
+                          }
+                          onToggleListen={(shouldListen) =>
+                            toggleListen(selectedNamespace, name, shouldListen)
+                          }
+                          onExecute={(payload, onAck) =>
+                            emitEvent(selectedNamespace, name, payload, onAck)
+                          }
                         />
                       ))}
                     </div>
@@ -353,11 +424,16 @@ const App = () => {
           ) : (
             <div className="space-y-6">
               <section className="mb-2">
-                <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                <h2
+                  className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}
+                >
                   Socket Playground
                 </h2>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Inspect live events, test subscriptions, and monitor payloads in real time.
+                <p
+                  className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}
+                >
+                  Inspect live events, test subscriptions, and monitor payloads
+                  in real time.
                 </p>
               </section>
 
@@ -369,7 +445,9 @@ const App = () => {
                   {!namespaceHasEvents ? (
                     emptyNamespaceState
                   ) : filteredEvents.length === 0 ? (
-                    <div className={`text-center py-12 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <div
+                      className={`text-center py-12 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}
+                    >
                       No events match your search.
                     </div>
                   ) : (
@@ -381,9 +459,16 @@ const App = () => {
                           namespace={selectedNamespace}
                           event={event}
                           theme={theme}
-                          isListening={listenedEvents[`${selectedNamespace}::${name}`] ?? false}
-                          onToggleListen={(shouldListen) => toggleListen(selectedNamespace, name, shouldListen)}
-                          onExecute={(payload, onAck) => emitEvent(selectedNamespace, name, payload, onAck)}
+                          isListening={
+                            listenedEvents[`${selectedNamespace}::${name}`] ??
+                            false
+                          }
+                          onToggleListen={(shouldListen) =>
+                            toggleListen(selectedNamespace, name, shouldListen)
+                          }
+                          onExecute={(payload, onAck) =>
+                            emitEvent(selectedNamespace, name, payload, onAck)
+                          }
                         />
                       ))}
                     </div>
@@ -391,7 +476,12 @@ const App = () => {
                 </div>
 
                 <div className="min-w-0">
-                  <EventLog logs={logs} onClear={clearLogs} theme={theme} className="h-80 xl:h-[520px]" />
+                  <EventLog
+                    logs={logs}
+                    onClear={clearLogs}
+                    theme={theme}
+                    className="h-80 xl:h-[520px]"
+                  />
                 </div>
               </div>
             </div>

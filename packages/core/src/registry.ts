@@ -1,4 +1,4 @@
-import type { ZodTypeAny } from "zod";
+import type { ZodTypeAny } from 'zod';
 import {
   type Direction,
   type ErrorSpec,
@@ -7,8 +7,8 @@ import {
   type EventSpec,
   type NamespaceSpec,
   type SocketDocsSpec,
-} from "./spec.js";
-import { normalizeSchema, type JSONSchema } from "./normalize.js";
+} from './spec.js';
+import { normalizeSchema, type JSONSchema } from './normalize.js';
 
 export interface ObserveInfo {
   direction?: Direction;
@@ -38,17 +38,17 @@ export interface EventDeclaration {
 type Listener = () => void;
 
 const DECLARED_FIELDS: Array<keyof EventDeclaration> = [
-  "summary",
-  "description",
-  "direction",
-  "kind",
-  "payload",
-  "response",
-  "examples",
-  "errors",
-  "tags",
-  "deprecated",
-  "authRequired",
+  'summary',
+  'description',
+  'direction',
+  'kind',
+  'payload',
+  'response',
+  'examples',
+  'errors',
+  'tags',
+  'deprecated',
+  'authRequired',
 ];
 
 interface StoredEvent {
@@ -59,17 +59,17 @@ interface StoredEvent {
 export class EventRegistry {
   private namespaces: Map<string, NamespaceSpec> = new Map();
   private events: Map<string, Map<string, StoredEvent>> = new Map();
-  private info: SocketDocsSpec["info"];
-  private servers?: SocketDocsSpec["servers"];
+  private info: SocketDocsSpec['info'];
+  private servers?: SocketDocsSpec['servers'];
   private socketPath?: string;
-  private security?: SocketDocsSpec["security"];
+  private security?: SocketDocsSpec['security'];
   private listeners: Set<Listener> = new Set();
 
   constructor(opts: {
-    info: SocketDocsSpec["info"];
-    servers?: SocketDocsSpec["servers"];
+    info: SocketDocsSpec['info'];
+    servers?: SocketDocsSpec['servers'];
     socketPath?: string;
-    security?: SocketDocsSpec["security"];
+    security?: SocketDocsSpec['security'];
   }) {
     this.info = opts.info;
     this.servers = opts.servers;
@@ -115,8 +115,8 @@ export class EventRegistry {
           spec: {
             name: eventName,
             namespace: nsName,
-            direction: info.direction ?? "client_to_server",
-            source: info.source ?? "sniffed",
+            direction: info.direction ?? 'client_to_server',
+            source: info.source ?? 'sniffed',
           },
           declared: new Set(),
         };
@@ -126,24 +126,27 @@ export class EventRegistry {
         // Upgrade sniffed events to a richer source (e.g. "decorator"), never downgrade.
         if (
           info.source &&
-          info.source !== "sniffed" &&
-          stored.spec.source === "sniffed"
+          info.source !== 'sniffed' &&
+          stored.spec.source === 'sniffed'
         ) {
           stored.spec.source = info.source;
         }
-        if (info.direction && !stored.declared.has("direction")) {
-          if (stored.spec.direction === "server_to_client" && info.direction === "client_to_server") {
-            stored.spec.direction = "bidirectional";
-          } else if (
-            stored.spec.direction === "client_to_server" &&
-            info.direction === "server_to_client"
+        if (info.direction && !stored.declared.has('direction')) {
+          if (
+            stored.spec.direction === 'server_to_client' &&
+            info.direction === 'client_to_server'
           ) {
-            stored.spec.direction = "bidirectional";
+            stored.spec.direction = 'bidirectional';
+          } else if (
+            stored.spec.direction === 'client_to_server' &&
+            info.direction === 'server_to_client'
+          ) {
+            stored.spec.direction = 'bidirectional';
           } else if (!stored.spec.direction) {
             stored.spec.direction = info.direction;
           }
         }
-        if (info.kind && !stored.declared.has("kind")) {
+        if (info.kind && !stored.declared.has('kind')) {
           stored.spec.kind = info.kind;
         }
       }
@@ -162,15 +165,15 @@ export class EventRegistry {
         spec: {
           name: eventName,
           namespace: nsName,
-          direction: def.direction ?? "client_to_server",
-          source: "declared",
+          direction: def.direction ?? 'client_to_server',
+          source: 'declared',
         },
         declared: new Set(),
       };
       nsEvents.set(eventName, stored);
     }
 
-    stored.spec.source = "declared";
+    stored.spec.source = 'declared';
 
     for (const field of DECLARED_FIELDS) {
       const value = def[field];
@@ -178,11 +181,15 @@ export class EventRegistry {
       stored.declared.add(field);
 
       switch (field) {
-        case "payload":
-          stored.spec.payloadSchema = normalizeSchema(value as ZodTypeAny | JSONSchema);
+        case 'payload':
+          stored.spec.payloadSchema = normalizeSchema(
+            value as ZodTypeAny | JSONSchema,
+          );
           break;
-        case "response":
-          stored.spec.responseSchema = normalizeSchema(value as ZodTypeAny | JSONSchema);
+        case 'response':
+          stored.spec.responseSchema = normalizeSchema(
+            value as ZodTypeAny | JSONSchema,
+          );
           break;
         default:
           (stored.spec as unknown as Record<string, unknown>)[field] = value;
@@ -227,7 +234,7 @@ export class EventRegistry {
       namespaces[name] = { ...ns, events: { ...ns.events } };
     }
     const spec: SocketDocsSpec = {
-      specVersion: "1.0",
+      specVersion: '1.0',
       info: { ...this.info },
       namespaces,
     };

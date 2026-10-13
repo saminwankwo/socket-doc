@@ -39,7 +39,9 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
   const [sockets, setSockets] = useState<Record<string, Socket>>({});
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [listenedEvents, setListenedEvents] = useState<Record<string, boolean>>({});
+  const [listenedEvents, setListenedEvents] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const socketsRef = useRef<Record<string, Socket>>({});
   socketsRef.current = sockets;
@@ -47,17 +49,26 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
   const authConfigRef = useRef<AuthConfig>(authConfig);
   authConfigRef.current = authConfig;
 
-  const addLog = useCallback((type: 'in' | 'out' | 'info' | 'error', event: string, namespace: string, data: any) => {
-    const entry: LogEntry = {
-      id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
-      type,
-      event,
-      namespace,
-      data,
-      timestamp: Date.now(),
-    };
-    setLogs((prev) => [...prev, entry]);
-  }, []);
+  const addLog = useCallback(
+    (
+      type: 'in' | 'out' | 'info' | 'error',
+      event: string,
+      namespace: string,
+      data: any,
+    ) => {
+      const entry: LogEntry = {
+        id:
+          Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
+        type,
+        event,
+        namespace,
+        data,
+        timestamp: Date.now(),
+      };
+      setLogs((prev) => [...prev, entry]);
+    },
+    [],
+  );
 
   const clearLogs = useCallback(() => {
     setLogs([]);
@@ -71,9 +82,14 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
         return socketsRef.current[normalizedNs];
       }
 
-      const { authPayload, queryParams } = buildHandshake(authConfigRef.current);
+      const { authPayload, queryParams } = buildHandshake(
+        authConfigRef.current,
+      );
 
-      const nsUrl = normalizedNs === '/' ? serverUrl : `${serverUrl.replace(/\/+$/, '')}${normalizedNs}`;
+      const nsUrl =
+        normalizedNs === '/'
+          ? serverUrl
+          : `${serverUrl.replace(/\/+$/, '')}${normalizedNs}`;
       const newSocket = io(nsUrl, {
         path: socketPath,
         auth: authPayload,
@@ -88,7 +104,9 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
 
       newSocket.on('disconnect', () => {
         // Only set disconnected if all sockets are disconnected
-        const anyActive = Object.values(socketsRef.current).some((s) => s.connected && s !== newSocket);
+        const anyActive = Object.values(socketsRef.current).some(
+          (s) => s.connected && s !== newSocket,
+        );
         setIsConnected(anyActive);
         addLog('info', 'System', normalizedNs, 'Disconnected');
       });
@@ -100,7 +118,7 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
       setSockets((prev) => ({ ...prev, [normalizedNs]: newSocket }));
       return newSocket;
     },
-    [serverUrl, socketPath, addLog]
+    [serverUrl, socketPath, addLog],
   );
 
   const setAuthConfig = useCallback(
@@ -114,16 +132,21 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
       }
       setSockets({});
       setIsConnected(false);
-      addLog('info', 'System', '/', 'Auth credentials updated. Existing connections closed.');
+      addLog(
+        'info',
+        'System',
+        '/',
+        'Auth credentials updated. Existing connections closed.',
+      );
     },
-    [addLog]
+    [addLog],
   );
 
   const connectNamespace = useCallback(
     (ns = activeNamespace) => {
       return getOrCreateSocket(ns);
     },
-    [activeNamespace, getOrCreateSocket]
+    [activeNamespace, getOrCreateSocket],
   );
 
   const disconnectAll = useCallback(() => {
@@ -136,7 +159,12 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
   }, [addLog]);
 
   const emitEvent = useCallback(
-    (ns: string, eventName: string, payload: any, onAck?: (response: any) => void) => {
+    (
+      ns: string,
+      eventName: string,
+      payload: any,
+      onAck?: (response: any) => void,
+    ) => {
       const s = getOrCreateSocket(ns);
       addLog('out', eventName, ns, payload);
 
@@ -149,7 +177,7 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
         s.emit(eventName, payload);
       }
     },
-    [getOrCreateSocket, addLog]
+    [getOrCreateSocket, addLog],
   );
 
   const toggleListen = useCallback(
@@ -175,7 +203,7 @@ export function useSocketClient(serverUrl: string, socketPath = '/socket.io') {
         addLog('info', 'System', ns, `Stopped listening for "${eventName}"`);
       }
     },
-    [getOrCreateSocket, addLog]
+    [getOrCreateSocket, addLog],
   );
 
   return {

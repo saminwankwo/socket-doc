@@ -1,7 +1,7 @@
-import type { SocketDocsSpec } from "./spec.js";
+import type { SocketDocsSpec } from './spec.js';
 
 export interface LintIssue {
-  type: "error" | "warning";
+  type: 'error' | 'warning';
   message: string;
   path: string;
 }
@@ -11,9 +11,9 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
 
   if (!spec.info.description) {
     issues.push({
-      type: "warning",
-      message: "API description is missing",
-      path: "info.description",
+      type: 'warning',
+      message: 'API description is missing',
+      path: 'info.description',
     });
   }
 
@@ -26,7 +26,7 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
 
       if (eventNames.has(evtName)) {
         issues.push({
-          type: "error",
+          type: 'error',
           message: `Duplicate event name '${evtName}' in namespace '${nsName}'`,
           path,
         });
@@ -35,7 +35,7 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
 
       if (!/^[a-z0-9_]+$/.test(evtName)) {
         issues.push({
-          type: "warning",
+          type: 'warning',
           message: `Event name '${evtName}' should be lowercase and snake_case`,
           path,
         });
@@ -43,23 +43,23 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
 
       if (!evt.summary && !evt.description) {
         issues.push({
-          type: "warning",
+          type: 'warning',
           message: `Event '${evtName}' is missing both summary and description`,
           path,
         });
       }
 
-      if (!evt.payloadSchema && evt.direction !== "server_to_client") {
+      if (!evt.payloadSchema && evt.direction !== 'server_to_client') {
         issues.push({
-          type: "warning",
+          type: 'warning',
           message: `Event '${evtName}' has no payload schema defined`,
           path,
         });
       }
 
-      if (evt.kind === "request_response" && !evt.responseSchema) {
+      if (evt.kind === 'request_response' && !evt.responseSchema) {
         issues.push({
-          type: "warning",
+          type: 'warning',
           message: `Request-Response event '${evtName}' is missing a response schema`,
           path,
         });
@@ -67,7 +67,7 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
 
       if (evt.authRequired && (!spec.security || spec.security.length === 0)) {
         issues.push({
-          type: "warning",
+          type: 'warning',
           message: `Event '${evtName}' requires auth but no security schemes are defined at the API level`,
           path: `${path}.authRequired`,
         });
@@ -76,9 +76,9 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
       if (evt.examples && evt.examples.length > 0) {
         for (let i = 0; i < evt.examples.length; i++) {
           const example = evt.examples[i];
-          if (!example || typeof example !== "object") {
+          if (!example || typeof example !== 'object') {
             issues.push({
-              type: "warning",
+              type: 'warning',
               message: `Example ${i} for event '${evtName}' is not a valid object`,
               path: `${path}.examples[${i}]`,
             });
@@ -96,16 +96,16 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
           const err = evt.errors[i];
           const errPath = `${path}.errors[${i}]`;
 
-          if (err.code === undefined || err.code === null || err.code === "") {
+          if (err.code === undefined || err.code === null || err.code === '') {
             issues.push({
-              type: "error",
+              type: 'error',
               message: `Error at index ${i} for event '${evtName}' is missing required error code`,
               path: `${errPath}.code`,
             });
           } else {
             if (evtErrorCodes.has(String(err.code))) {
               issues.push({
-                type: "error",
+                type: 'error',
                 message: `Duplicate error code '${err.code}' for event '${evtName}'`,
                 path: errPath,
               });
@@ -115,7 +115,7 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
 
           if (!err.description) {
             issues.push({
-              type: "warning",
+              type: 'warning',
               message: `Error at index ${i} for event '${evtName}' is missing description`,
               path: `${errPath}.description`,
             });
@@ -126,7 +126,7 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
 
     if (Object.keys(ns.events).length === 0) {
       issues.push({
-        type: "warning",
+        type: 'warning',
         message: `Namespace '${nsName}' has no events defined`,
         path: `namespaces.${nsName}`,
       });
@@ -135,9 +135,9 @@ export function lintSpec(spec: SocketDocsSpec): LintIssue[] {
 
   if (Object.keys(spec.namespaces).length === 0) {
     issues.push({
-      type: "warning",
-      message: "No namespaces defined in the spec",
-      path: "namespaces",
+      type: 'warning',
+      message: 'No namespaces defined in the spec',
+      path: 'namespaces',
     });
   }
 

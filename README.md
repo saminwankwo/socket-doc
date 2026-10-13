@@ -61,7 +61,9 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3000, () => console.log('Docs: http://localhost:3000/socket-docs'));
+server.listen(3000, () =>
+  console.log('Docs: http://localhost:3000/socket-docs'),
+);
 ```
 
 Open `http://localhost:3000/socket-docs`. Once a client connects, `send_message` appears in the list automatically.
@@ -116,18 +118,18 @@ Events without a namespace belong to the default namespace `/`.
 
 ### Event options
 
-| Option | Type | Description |
-|---|---|---|
-| `direction` | `'client_to_server' \| 'server_to_client' \| 'bidirectional'` | Defaults to `client_to_server` |
-| `summary` | `string` | One-line description shown on the card |
-| `description` | `string` | Longer explanation |
-| `tags` | `string[]` | Used for search and grouping |
-| `payload` | Zod or JSON Schema | Shape of the data sent with the event |
-| `response` | Zod or JSON Schema | Shape of the acknowledgement |
-| `errors` | `{ code, description }[]` | Possible error responses |
-| `examples` | `unknown[]` | Example payloads; the first one prefills Try it out |
-| `authRequired` | `boolean` | Shows an AUTH badge |
-| `deprecated` | `boolean` | Shows the event struck through |
+| Option         | Type                                                          | Description                                         |
+| -------------- | ------------------------------------------------------------- | --------------------------------------------------- |
+| `direction`    | `'client_to_server' \| 'server_to_client' \| 'bidirectional'` | Defaults to `client_to_server`                      |
+| `summary`      | `string`                                                      | One-line description shown on the card              |
+| `description`  | `string`                                                      | Longer explanation                                  |
+| `tags`         | `string[]`                                                    | Used for search and grouping                        |
+| `payload`      | Zod or JSON Schema                                            | Shape of the data sent with the event               |
+| `response`     | Zod or JSON Schema                                            | Shape of the acknowledgement                        |
+| `errors`       | `{ code, description }[]`                                     | Possible error responses                            |
+| `examples`     | `unknown[]`                                                   | Example payloads; the first one prefills Try it out |
+| `authRequired` | `boolean`                                                     | Shows an AUTH badge                                 |
+| `deprecated`   | `boolean`                                                     | Shows the event struck through                      |
 
 ---
 
@@ -135,25 +137,25 @@ Events without a namespace belong to the default namespace `/`.
 
 ```ts
 SocketDocs.setup(app, io, {
-  path: '/socket-docs',        // where the docs are mounted
+  path: '/socket-docs', // where the docs are mounted
   title: 'Chat API',
   version: '1.0.0',
   description: '...',
-  socketPath: '/socket.io',    // your Socket.IO "path" option
+  socketPath: '/socket.io', // your Socket.IO "path" option
   security: [{ name: 'token', type: 'bearer', in: 'auth' }],
   auth: { username: 'admin', password: 'secret' }, // or an Express middleware
   enabled: process.env.NODE_ENV !== 'production',
 });
 ```
 
-| Option | Default | Description |
-|---|---|---|
-| `path` | `/socket-docs` | Mount path for the docs UI |
-| `title` / `version` / `description` | | Shown in the page header |
-| `socketPath` | `/socket.io` | The path your Socket.IO server listens on |
-| `security` | `[]` | Credentials the **Authorize** dialog should offer |
-| `auth` | none | Protects the docs page itself (HTTP Basic or your own middleware) |
-| `enabled` | `true` | Set `false` to mount nothing |
+| Option                              | Default        | Description                                                       |
+| ----------------------------------- | -------------- | ----------------------------------------------------------------- |
+| `path`                              | `/socket-docs` | Mount path for the docs UI                                        |
+| `title` / `version` / `description` |                | Shown in the page header                                          |
+| `socketPath`                        | `/socket.io`   | The path your Socket.IO server listens on                         |
+| `security`                          | `[]`           | Credentials the **Authorize** dialog should offer                 |
+| `auth`                              | none           | Protects the docs page itself (HTTP Basic or your own middleware) |
+| `enabled`                           | `true`         | Set `false` to mount nothing                                      |
 
 The raw spec is available at `/<path>/spec.json` if you want to inspect it or build on it.
 
@@ -193,7 +195,10 @@ Declared events appear immediately, even before anyone connects.
 The planned API mirrors `SwaggerModule`:
 
 ```ts
-SocketDocsModule.setup('/socket-docs', app, { title: 'Chat API', version: '1.0.0' });
+SocketDocsModule.setup('/socket-docs', app, {
+  title: 'Chat API',
+  version: '1.0.0',
+});
 ```
 
 It will read your existing `@WebSocketGateway` and `@SubscribeMessage` handlers with no changes, with an optional `@SocketEvent({...})` decorator for extra detail.
@@ -227,12 +232,12 @@ npx socketdocs asyncapi spec.json -o asyncapi.json
 
 ## Packages
 
-| Package | Purpose |
-|---|---|
-| `@socketdocs/core` | Spec model, schema normalization (Zod / JSON Schema), event registry, linting, AsyncAPI export |
-| `@socketdocs/express` | Express mount, Socket.IO discovery, bundled docs UI |
-| `@socketdocs/nestjs` | NestJS module and decorators *(in progress)* |
-| `@socketdocs/cli` | Spec export, lint and AsyncAPI commands |
+| Package               | Purpose                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| `@socketdocs/core`    | Spec model, schema normalization (Zod / JSON Schema), event registry, linting, AsyncAPI export |
+| `@socketdocs/express` | Express mount, Socket.IO discovery, bundled docs UI                                            |
+| `@socketdocs/nestjs`  | NestJS module and decorators _(in progress)_                                                   |
+| `@socketdocs/cli`     | Spec export, lint and AsyncAPI commands                                                        |
 
 ---
 
@@ -259,7 +264,6 @@ npm install /tmp/sd/socketdocs-core-*.tgz /tmp/sd/socketdocs-express-*.tgz
 Prefer tarballs (or [`yalc`](https://github.com/wclr/yalc)) over `npm link`. A symlinked package can resolve its own copy of `socket.io`, and discovery then patches the wrong one. Run `npm ls socket.io` in your project and confirm there is exactly one copy.
 
 ---
-
 
 ## Contributing
 

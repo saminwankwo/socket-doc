@@ -1,12 +1,12 @@
-import { readFileSync } from 'node:fs'
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 // Library version (not the documented API's version), injected into the bundle
 // for the footer. Read synchronously so it works in the config module itself.
 const pkg = JSON.parse(
-  readFileSync(new URL('../express/package.json', import.meta.url), 'utf8')
-) as { version: string }
+  readFileSync(new URL('../express/package.json', import.meta.url), 'utf8'),
+) as { version: string };
 
 export default defineConfig({
   base: './',
@@ -16,6 +16,6 @@ export default defineConfig({
   },
   build: {
     cssMinify: false,
-    minify: 'esbuild'
-  }
-})
+    minify: 'esbuild',
+  },
+});

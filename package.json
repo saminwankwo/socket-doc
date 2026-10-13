@@ -36,7 +36,7 @@
     "test": "npm test --workspaces --if-present",
     "check:examples": "node scripts/check-examples.mjs",
     "lint": "eslint .",
-    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md}\"",
     "check:circular": "madge --circular --extensions ts,tsx packages/*/src"
   },
   "devDependencies": {
@@ -55,5 +55,6 @@
   "workspaces": [
     "packages/*",
     "examples/*"
-  ]
+  ],
+  "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md}\""
 }

@@ -25,29 +25,29 @@ You are refactoring the `socketdocs` monorepo (currently v0.3.0) into a **code-f
 A developer with an existing Express + Socket.IO server should be able to do this:
 
 ```ts
-import express from "express";
-import http from "http";
-import { Server } from "socket.io";
-import { SocketDocs } from "@socketdocs/express";
-import { z } from "zod";
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
+import { SocketDocs } from '@socketdocs/express';
+import { z } from 'zod';
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 const docs = SocketDocs.setup(app, io, {
-  path: "/socket-docs",
-  title: "Chat API",
-  version: "1.0.0",
-  description: "Realtime chat",
+  path: '/socket-docs',
+  title: 'Chat API',
+  version: '1.0.0',
+  description: 'Realtime chat',
 });
 
 // Optional enrichment. Without this, events are still discovered automatically (names only).
-docs.event("send_message", {
-  summary: "Send a message to a room",
+docs.event('send_message', {
+  summary: 'Send a message to a room',
   payload: z.object({ text: z.string(), roomId: z.string() }),
   response: z.object({ ok: z.boolean() }),
-  errors: [{ code: "INVALID_ROOM", description: "Room does not exist" }],
+  errors: [{ code: 'INVALID_ROOM', description: 'Room does not exist' }],
 });
 
 server.listen(3000);
@@ -70,7 +70,7 @@ These come from the architecture report. Every one must be resolved or explicitl
 1. **Three diverging schema shapes** (fluent `Contract`, flat `SocketDocsSchema`, `generateSpec()` output). Collapse to **one**.
 2. **`/schema.json` returns the wrong shape for the React UI.** The server returns `SocketDocsSchema`, the UI expects the `generateSpec()` shape, so the SPA renders nothing.
 3. **The React UI is never shipped.** `docs-server` is `private`, and `@socketdocs/server` resolves `../../docs-server/dist` by relative path, which breaks after `npm publish`.
-4. **Playground connection logic is wrong.** `io(socketUrl, { path: ns === 'default' ? '/socket.io' : '/' + ns })` treats the *namespace* as the engine `path`. Namespaces must go in the URL (`io(origin + "/chat", { path: "/socket.io" })`).
+4. **Playground connection logic is wrong.** `io(socketUrl, { path: ns === 'default' ? '/socket.io' : '/' + ns })` treats the _namespace_ as the engine `path`. Namespaces must go in the URL (`io(origin + "/chat", { path: "/socket.io" })`).
 5. **`socketUrl` defaults to `http://localhost:3000`.** It must be inferred from `window.location`.
 6. **No auto-discovery.** Nothing reads a running Socket.IO server or existing NestJS gateways.
 7. Stale compiled `index.js` / `index.d.ts` committed inside `packages/ws/src` and `packages/fastify/src`.
@@ -85,12 +85,12 @@ These come from the architecture report. Every one must be resolved or explicitl
 
 ### Packages after the redesign
 
-| Package | Path | Role |
-|---|---|---|
-| `@socketdocs/core` | `packages/core` | Spec model, schema normalization (Zod/JSON Schema), event registry, optional lint + AsyncAPI export |
-| `@socketdocs/express` | `packages/express` | `SocketDocs.setup(app, io, opts)`: Socket.IO instrumentation (sniffing), serves `spec.json` and the bundled UI |
-| `@socketdocs/nestjs` | `packages/nestjs` | `SocketDocsModule.setup(...)`, gateway discovery, `@SocketEvent` decorator |
-| `@socketdocs/ui` | `packages/ui` | The existing React SPA, renamed from `docs-server`; its build output is **bundled into `@socketdocs/express`** at build time |
+| Package               | Path               | Role                                                                                                                         |
+| --------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@socketdocs/core`    | `packages/core`    | Spec model, schema normalization (Zod/JSON Schema), event registry, optional lint + AsyncAPI export                          |
+| `@socketdocs/express` | `packages/express` | `SocketDocs.setup(app, io, opts)`: Socket.IO instrumentation (sniffing), serves `spec.json` and the bundled UI               |
+| `@socketdocs/nestjs`  | `packages/nestjs`  | `SocketDocsModule.setup(...)`, gateway discovery, `@SocketEvent` decorator                                                   |
+| `@socketdocs/ui`      | `packages/ui`      | The existing React SPA, renamed from `docs-server`; its build output is **bundled into `@socketdocs/express`** at build time |
 
 **Delete:** `packages/ws`, `packages/fastify`, `packages/socket-io` (the old validating adapter), and the old `packages/server` (replaced by `packages/express`). Also delete: SDK generators, mock server, plugin system, `validate-contract`, `generateHtml()` as a full UI, and the legacy `socketdocs.json` / `SocketDocsSchema` / fluent `createContract` path. Git history preserves everything.
 
@@ -99,28 +99,34 @@ These come from the architecture report. Every one must be resolved or explicitl
 Base it on the **existing `generateSpec()` shape**, since the UI already consumes it, and name it `SocketDocsSpec`:
 
 ```ts
-export type Direction = "client_to_server" | "server_to_client" | "bidirectional";
-export type EventKind = "fire_and_forget" | "request_response";
-export type EventSource = "sniffed" | "declared" | "decorator";
+export type Direction =
+  | 'client_to_server'
+  | 'server_to_client'
+  | 'bidirectional';
+export type EventKind = 'fire_and_forget' | 'request_response';
+export type EventSource = 'sniffed' | 'declared' | 'decorator';
 
-export interface ErrorSpec { code: string | number; description: string; }
+export interface ErrorSpec {
+  code: string | number;
+  description: string;
+}
 
 export interface SecuritySpec {
   name: string;
-  type: "apiKey" | "http" | "oauth2";
-  in?: "header" | "query" | "cookie" | "auth";   // "auth" = Socket.IO handshake `auth` payload
+  type: 'apiKey' | 'http' | 'oauth2';
+  in?: 'header' | 'query' | 'cookie' | 'auth'; // "auth" = Socket.IO handshake `auth` payload
   description?: string;
 }
 
 export interface EventSpec {
   name: string;
-  namespace: string;                 // e.g. "/" or "/chat"
+  namespace: string; // e.g. "/" or "/chat"
   direction: Direction;
-  kind?: EventKind;                  // request_response if an ack callback was observed/declared
+  kind?: EventKind; // request_response if an ack callback was observed/declared
   summary?: string;
   description?: string;
-  payloadSchema?: Record<string, unknown>;    // JSON Schema
-  responseSchema?: Record<string, unknown>;   // JSON Schema (ack payload)
+  payloadSchema?: Record<string, unknown>; // JSON Schema
+  responseSchema?: Record<string, unknown>; // JSON Schema (ack payload)
   examples?: unknown[];
   errors?: ErrorSpec[];
   tags?: string[];
@@ -136,10 +142,10 @@ export interface NamespaceSpec {
 }
 
 export interface SocketDocsSpec {
-  specVersion: "1.0";
+  specVersion: '1.0';
   info: { title: string; version: string; description?: string };
   servers?: Array<{ url: string; label?: string }>;
-  socketPath?: string;               // engine path, default "/socket.io"
+  socketPath?: string; // engine path, default "/socket.io"
   security?: SecuritySpec[];
   namespaces: Record<string, NamespaceSpec>;
 }

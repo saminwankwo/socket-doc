@@ -3,7 +3,10 @@ import { buildHandshake } from '../src/utils/handshake';
 
 describe('buildHandshake', () => {
   it('sends the raw token for bearer auth (no "Bearer " prefix)', () => {
-    const { authPayload } = buildHandshake({ type: 'bearer', token: 'demo-token' });
+    const { authPayload } = buildHandshake({
+      type: 'bearer',
+      token: 'demo-token',
+    });
     expect(authPayload).toEqual({ token: 'demo-token' });
   });
 
@@ -21,7 +24,10 @@ describe('buildHandshake', () => {
   });
 
   it('ignores invalid custom JSON instead of throwing', () => {
-    const { authPayload } = buildHandshake({ type: 'custom', customAuthJson: '{ nope' });
+    const { authPayload } = buildHandshake({
+      type: 'custom',
+      customAuthJson: '{ nope',
+    });
     expect(authPayload).toEqual({});
   });
 
@@ -32,8 +38,14 @@ describe('buildHandshake', () => {
 
   it('adds query params only when both key and value are set', () => {
     expect(
-      buildHandshake({ type: 'none', queryParamKey: 'token', queryParamValue: 'abc' }).queryParams
+      buildHandshake({
+        type: 'none',
+        queryParamKey: 'token',
+        queryParamValue: 'abc',
+      }).queryParams,
     ).toEqual({ token: 'abc' });
-    expect(buildHandshake({ type: 'none', queryParamKey: 'token' }).queryParams).toEqual({});
+    expect(
+      buildHandshake({ type: 'none', queryParamKey: 'token' }).queryParams,
+    ).toEqual({});
   });
 });

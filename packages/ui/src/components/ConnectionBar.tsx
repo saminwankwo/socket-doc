@@ -29,7 +29,9 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
   return (
     <div
       className={`border p-4 rounded-xl mb-6 transition-colors ${
-        theme === 'dark' ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+        theme === 'dark'
+          ? 'bg-slate-900/40 border-slate-800'
+          : 'bg-white border-slate-200 shadow-sm'
       }`}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -77,7 +79,9 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 sm:flex-none">
           {namespaces.length > 1 && (
             <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
-              <span className="hidden text-xs font-medium text-slate-400 sm:inline">Namespace:</span>
+              <span className="hidden text-xs font-medium text-slate-400 sm:inline">
+                Namespace:
+              </span>
               <select
                 value={selectedNamespace}
                 onChange={(e) => setSelectedNamespace(e.target.value)}
@@ -132,4 +136,3 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
     </div>
   );
 };
-

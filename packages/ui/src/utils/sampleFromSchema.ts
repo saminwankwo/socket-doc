@@ -3,7 +3,7 @@
  * Handles object, array, string, number, integer, boolean, enum, default, and format basics.
  */
 export function sampleFromSchema(schema: any): any {
-  if (!schema || typeof schema !== "object") {
+  if (!schema || typeof schema !== 'object') {
     return {};
   }
 
@@ -39,41 +39,42 @@ export function sampleFromSchema(schema: any): any {
 
   const type = schema.type;
 
-  if (type === "string") {
-    if (schema.format === "date-time") return new Date().toISOString();
-    if (schema.format === "date") return "2026-10-13";
-    if (schema.format === "email") return "user@example.com";
-    if (schema.format === "uri" || schema.format === "url") return "https://example.com";
-    if (schema.format === "uuid") return "123e4567-e89b-12d3-a456-426614174000";
-    return "string";
+  if (type === 'string') {
+    if (schema.format === 'date-time') return new Date().toISOString();
+    if (schema.format === 'date') return '2026-10-13';
+    if (schema.format === 'email') return 'user@example.com';
+    if (schema.format === 'uri' || schema.format === 'url')
+      return 'https://example.com';
+    if (schema.format === 'uuid') return '123e4567-e89b-12d3-a456-426614174000';
+    return 'string';
   }
 
-  if (type === "number") {
+  if (type === 'number') {
     return 0.0;
   }
 
-  if (type === "integer") {
+  if (type === 'integer') {
     return 0;
   }
 
-  if (type === "boolean") {
+  if (type === 'boolean') {
     return true;
   }
 
-  if (type === "null") {
+  if (type === 'null') {
     return null;
   }
 
-  if (type === "array") {
+  if (type === 'array') {
     if (schema.items) {
       return [sampleFromSchema(schema.items)];
     }
     return [];
   }
 
-  if (type === "object" || schema.properties) {
+  if (type === 'object' || schema.properties) {
     const result: Record<string, any> = {};
-    if (schema.properties && typeof schema.properties === "object") {
+    if (schema.properties && typeof schema.properties === 'object') {
       for (const [key, propSchema] of Object.entries(schema.properties)) {
         result[key] = sampleFromSchema(propSchema);
       }
@@ -83,4 +84,3 @@ export function sampleFromSchema(schema: any): any {
 
   return {};
 }
-

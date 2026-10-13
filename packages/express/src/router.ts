@@ -1,9 +1,9 @@
-import { Router, static as expressStatic } from "express";
-import type { Request, Response, NextFunction, RequestHandler } from "express";
-import type { EventRegistry } from "@socketdocs/core";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-import { existsSync } from "fs";
+import { Router, static as expressStatic } from 'express';
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import type { EventRegistry } from '@socketdocs/core';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 
 export interface DocsRouterOptions {
   path?: string;
@@ -13,30 +13,35 @@ export interface DocsRouterOptions {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-function basicAuthMiddleware(auth: { username: string; password: string }): RequestHandler {
+function basicAuthMiddleware(auth: {
+  username: string;
+  password: string;
+}): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-      res.setHeader("WWW-Authenticate", 'Basic realm="SocketDocs"');
-      res.status(401).send("Unauthorized");
+      res.setHeader('WWW-Authenticate', 'Basic realm="SocketDocs"');
+      res.status(401).send('Unauthorized');
       return;
     }
 
-    const [type, credentials] = authHeader.split(" ");
-    if (type !== "Basic" || !credentials) {
-      res.setHeader("WWW-Authenticate", 'Basic realm="SocketDocs"');
-      res.status(401).send("Unauthorized");
+    const [type, credentials] = authHeader.split(' ');
+    if (type !== 'Basic' || !credentials) {
+      res.setHeader('WWW-Authenticate', 'Basic realm="SocketDocs"');
+      res.status(401).send('Unauthorized');
       return;
     }
 
-    const [username, password] = Buffer.from(credentials, "base64").toString().split(":");
+    const [username, password] = Buffer.from(credentials, 'base64')
+      .toString()
+      .split(':');
     if (username === auth.username && password === auth.password) {
       next();
       return;
     }
 
-    res.setHeader("WWW-Authenticate", 'Basic realm="SocketDocs"');
-    res.status(401).send("Unauthorized");
+    res.setHeader('WWW-Authenticate', 'Basic realm="SocketDocs"');
+    res.status(401).send('Unauthorized');
   };
 }
 
@@ -67,13 +72,13 @@ const MISSING_UI_HTML = `<!DOCTYPE html>
  */
 export function createDocsRouter(
   registry: EventRegistry,
-  options: DocsRouterOptions = {}
+  options: DocsRouterOptions = {},
 ): Router {
   const router = Router();
 
   // 1. Auth middleware (if configured) applies to ALL routes
   if (options.auth) {
-    if (typeof options.auth === "function") {
+    if (typeof options.auth === 'function') {
       router.use(options.auth);
     } else {
       router.use(basicAuthMiddleware(options.auth));
@@ -81,13 +86,13 @@ export function createDocsRouter(
   }
 
   // 2. Spec endpoint: GET spec.json
-  router.get("/spec.json", (_req: Request, res: Response) => {
-    res.setHeader("Content-Type", "application/json");
+  router.get('/spec.json', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
     res.json(registry.toSpec());
   });
 
   // 3. Resolve ui-dist directory relative to this package's dist folder: ../ui-dist
-  const uiDistPath = join(__dirname, "../ui-dist");
+  const uiDistPath = join(__dirname, '../ui-dist');
   const hasUiDist = existsSync(uiDistPath);
 
   if (hasUiDist) {
@@ -97,12 +102,12 @@ export function createDocsRouter(
     // SPA fallback. A plain middleware (instead of a "*" route) keeps this
     // working on both Express 4 and Express 5.
     router.use((_req: Request, res: Response) => {
-      res.sendFile(join(uiDistPath, "index.html"));
+      res.sendFile(join(uiDistPath, 'index.html'));
     });
   } else {
     // Fallback if ui-dist is missing
     router.use((_req: Request, res: Response) => {
-      res.setHeader("Content-Type", "text/html");
+      res.setHeader('Content-Type', 'text/html');
       res.status(200).send(MISSING_UI_HTML);
     });
   }
@@ -136,20 +141,20 @@ export type ExpressAppLike = {
 export function mountDocs(
   app: ExpressAppLike,
   registry: EventRegistry,
-  options: MountDocsOptions = {}
+  options: MountDocsOptions = {},
 ): string {
-  const mountPath = options.path ?? "/socket-docs";
-  const stripped = mountPath.replace(/^\/+|\/+$/g, "");
-  const normalizedPath = stripped ? `/${stripped}` : "/socket-docs";
+  const mountPath = options.path ?? '/socket-docs';
+  const stripped = mountPath.replace(/^\/+|\/+$/g, '');
+  const normalizedPath = stripped ? `/${stripped}` : '/socket-docs';
 
   app.get(normalizedPath, (req: any, res: any, next: any) => {
     // Express treats "/path" and "/path/" as the same route, so only redirect
     // requests that are actually missing the trailing slash.
-    if (typeof req.path === "string" && req.path !== normalizedPath) {
+    if (typeof req.path === 'string' && req.path !== normalizedPath) {
       return next();
     }
-    const queryIndex = typeof req.url === "string" ? req.url.indexOf("?") : -1;
-    const query = queryIndex >= 0 ? req.url.slice(queryIndex) : "";
+    const queryIndex = typeof req.url === 'string' ? req.url.indexOf('?') : -1;
+    const query = queryIndex >= 0 ? req.url.slice(queryIndex) : '';
     res.redirect(301, `${normalizedPath}/${query}`);
   });
 

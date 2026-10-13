@@ -1,5 +1,5 @@
-import type { Socket, Server as SocketIOServer, Namespace } from "socket.io";
-import type { EventRegistry, ObserveInfo } from "@socketdocs/core";
+import type { Socket, Server as SocketIOServer, Namespace } from 'socket.io';
+import type { EventRegistry, ObserveInfo } from '@socketdocs/core';
 
 export interface SnifferOptions {
   sniff?: boolean;
@@ -7,32 +7,37 @@ export interface SnifferOptions {
 }
 
 const RESERVED_EVENTS = new Set([
-  "connect",
-  "connect_error",
-  "disconnect",
-  "disconnecting",
-  "error",
-  "newListener",
-  "removeListener",
+  'connect',
+  'connect_error',
+  'disconnect',
+  'disconnecting',
+  'error',
+  'newListener',
+  'removeListener',
 ]);
 
-const SENSITIVE_KEY_REGEX = /^(password|token|authorization|secret|apiKey|api_key|access_token|refresh_token)$/i;
+const SENSITIVE_KEY_REGEX =
+  /^(password|token|authorization|secret|apiKey|api_key|access_token|refresh_token)$/i;
 const MAX_EXAMPLE_LENGTH = 1000;
 
 function sanitizeValue(value: unknown, depth = 0): unknown {
   if (depth > 4) return undefined;
   if (value === null || value === undefined) return value;
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return value;
   }
   if (Array.isArray(value)) {
     return value.slice(0, 5).map((item) => sanitizeValue(item, depth + 1));
   }
-  if (typeof value === "object") {
+  if (typeof value === 'object') {
     const res: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
       if (SENSITIVE_KEY_REGEX.test(key)) {
-        res[key] = "[REDACTED]";
+        res[key] = '[REDACTED]';
       } else {
         res[key] = sanitizeValue(val, depth + 1);
       }
@@ -88,11 +93,11 @@ function looksLikeNamespace(value: unknown): value is Namespace {
   const candidate = value as any;
   return (
     !!candidate &&
-    typeof candidate === "object" &&
-    typeof candidate.of !== "function" &&
-    typeof candidate.name === "string" &&
-    typeof candidate.on === "function" &&
-    typeof candidate.emit === "function"
+    typeof candidate === 'object' &&
+    typeof candidate.of !== 'function' &&
+    typeof candidate.name === 'string' &&
+    typeof candidate.on === 'function' &&
+    typeof candidate.emit === 'function'
   );
 }
 
@@ -102,7 +107,7 @@ function looksLikeNamespace(value: unknown): value is Namespace {
 export function instrumentSocketIO(
   io: SocketIOServer,
   registry: EventRegistry,
-  options: SnifferOptions = {}
+  options: SnifferOptions = {},
 ): void {
   if (options.sniff === false) {
     return;
@@ -117,12 +122,17 @@ export function instrumentSocketIO(
       const originalOnce = socket.once.bind(socket);
 
       const wrapRegistration = (
-        origMethod: (ev: string, fn: (...args: any[]) => void) => any
+        origMethod: (ev: string, fn: (...args: any[]) => void) => any,
       ) => {
-        return function (eventName: string, listener: (...args: any[]) => void) {
+        return function (
+          eventName: string,
+          listener: (...args: any[]) => void,
+        ) {
           try {
             if (!RESERVED_EVENTS.has(eventName)) {
-              registry.observe(namespaceName, eventName, { direction: "client_to_server" });
+              registry.observe(namespaceName, eventName, {
+                direction: 'client_to_server',
+              });
             }
           } catch {
             // Never throw into user code
@@ -132,17 +142,17 @@ export function instrumentSocketIO(
             try {
               if (!RESERVED_EVENTS.has(eventName)) {
                 const lastArg = args[args.length - 1];
-                const isAck = typeof lastArg === "function";
+                const isAck = typeof lastArg === 'function';
 
-                const info: ObserveInfo = { direction: "client_to_server" };
+                const info: ObserveInfo = { direction: 'client_to_server' };
                 if (isAck) {
-                  info.kind = "request_response";
+                  info.kind = 'request_response';
                 }
                 registry.observe(namespaceName, eventName, info);
 
                 if (options.captureExamples && args.length > (isAck ? 1 : 0)) {
                   const payloadArg = args[0];
-                  if (typeof payloadArg !== "function") {
+                  if (typeof payloadArg !== 'function') {
                     const sample = truncateAndSanitize(payloadArg);
                     if (sample !== undefined) {
                       // Never uses declare(): a captured example must not mark
@@ -167,16 +177,18 @@ export function instrumentSocketIO(
       socket.once = wrapRegistration(originalOnce) as any;
 
       // 2. Hook outgoing events (server -> client) via socket.onAnyOutgoing if supported (Socket.IO >= 4.5)
-      if (typeof (socket as any).onAnyOutgoing === "function") {
+      if (typeof (socket as any).onAnyOutgoing === 'function') {
         try {
           (socket as any).onAnyOutgoing((eventName: string, ...args: any[]) => {
             try {
               if (!RESERVED_EVENTS.has(eventName)) {
-                registry.observe(namespaceName, eventName, { direction: "server_to_client" });
+                registry.observe(namespaceName, eventName, {
+                  direction: 'server_to_client',
+                });
 
                 if (options.captureExamples && args.length > 0) {
                   const payloadArg = args[0];
-                  if (typeof payloadArg !== "function") {
+                  if (typeof payloadArg !== 'function') {
                     const sample = truncateAndSanitize(payloadArg);
                     if (sample !== undefined) {
                       registry.captureExample(namespaceName, eventName, sample);
@@ -202,7 +214,7 @@ export function instrumentSocketIO(
     hookedNamespaces.add(nsp);
 
     try {
-      const namespaceName = nsp.name || "/";
+      const namespaceName = nsp.name || '/';
       registry.namespace(namespaceName);
 
       const connectionListener = (socket: Socket) => {
@@ -213,10 +225,10 @@ export function instrumentSocketIO(
       // BEFORE handlers registered by the framework (e.g. NestJS gateway
       // connection handlers), so events emitted while handling a connection
       // and handlers registered from there are still captured.
-      if (typeof (nsp as any).prependListener === "function") {
-        (nsp as any).prependListener("connection", connectionListener);
+      if (typeof (nsp as any).prependListener === 'function') {
+        (nsp as any).prependListener('connection', connectionListener);
       } else {
-        nsp.on("connection", connectionListener);
+        nsp.on('connection', connectionListener);
       }
     } catch {
       // Defensive wrapping
@@ -236,8 +248,8 @@ export function instrumentSocketIO(
     }
 
     // Hook future namespaces if supported via new_namespace event
-    if (typeof (io as any).on === "function") {
-      (io as any).on("new_namespace", (nsp: Namespace) => {
+    if (typeof (io as any).on === 'function') {
+      (io as any).on('new_namespace', (nsp: Namespace) => {
         hookNamespace(nsp);
       });
     }
@@ -245,4 +257,3 @@ export function instrumentSocketIO(
     // Ignore errors
   }
 }
-

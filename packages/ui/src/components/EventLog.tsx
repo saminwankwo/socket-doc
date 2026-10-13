@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Trash2, ArrowDownCircle, ArrowUpCircle, AlertCircle, Info, Filter } from 'lucide-react';
+import {
+  Terminal,
+  Trash2,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  AlertCircle,
+  Info,
+  Filter,
+} from 'lucide-react';
 import type { LogEntry } from '../hooks/useSocketClient';
 
 interface EventLogProps {
@@ -10,10 +18,17 @@ interface EventLogProps {
   className?: string;
 }
 
-export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme, className }) => {
+export const EventLog: React.FC<EventLogProps> = ({
+  logs,
+  onClear,
+  theme,
+  className,
+}) => {
   const [filterEvent, setFilterEvent] = useState<string>('');
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
-  const [expandedLogIds, setExpandedLogIds] = useState<Record<string, boolean>>({});
+  const [expandedLogIds, setExpandedLogIds] = useState<Record<string, boolean>>(
+    {},
+  );
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const filteredLogs = logs.filter((log) => {
@@ -40,30 +55,45 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme, classN
       className={`${
         className ?? 'h-[520px]'
       } flex flex-col rounded-xl border transition-colors ${
-        theme === 'dark' ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+        theme === 'dark'
+          ? 'bg-slate-900/60 border-slate-800'
+          : 'bg-white border-slate-200 shadow-sm'
       }`}
     >
       <div
         className={`p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
-          theme === 'dark' ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50'
+          theme === 'dark'
+            ? 'border-slate-800 bg-slate-950/40'
+            : 'border-slate-100 bg-slate-50'
         }`}
       >
         <div className="flex items-center gap-2">
           <Terminal size={16} className="text-blue-400" />
-          <h3 className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Live Event Log</h3>
-          <span className="text-xs font-mono text-slate-500">({filteredLogs.length})</span>
+          <h3
+            className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}
+          >
+            Live Event Log
+          </h3>
+          <span className="text-xs font-mono text-slate-500">
+            ({filteredLogs.length})
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-0 basis-full sm:basis-auto sm:flex-1">
-            <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Filter
+              size={12}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"
+            />
             <input
               type="text"
               placeholder="Filter by event..."
               value={filterEvent}
               onChange={(e) => setFilterEvent(e.target.value)}
               className={`w-full min-w-0 rounded-lg border py-1 pl-7 pr-2 text-base focus:border-blue-500 focus:outline-none sm:text-xs ${
-                theme === 'dark' ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+                theme === 'dark'
+                  ? 'bg-slate-950 border-slate-800 text-slate-200'
+                  : 'bg-white border-slate-200 text-slate-800'
               }`}
             />
           </div>
@@ -102,7 +132,9 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme, classN
               <div
                 key={log.id}
                 className={`p-3 rounded-lg border transition-colors ${
-                  theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-slate-50 border-slate-200/80'
+                  theme === 'dark'
+                    ? 'bg-slate-950/60 border-slate-800/80'
+                    : 'bg-slate-50 border-slate-200/80'
                 }`}
               >
                 <div
@@ -125,17 +157,21 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme, classN
                         log.type === 'in'
                           ? 'bg-green-500/10 text-green-400'
                           : log.type === 'out'
-                          ? 'bg-blue-500/10 text-blue-400'
-                          : log.type === 'error'
-                          ? 'bg-red-500/10 text-red-400'
-                          : 'bg-slate-500/10 text-slate-400'
+                            ? 'bg-blue-500/10 text-blue-400'
+                            : log.type === 'error'
+                              ? 'bg-red-500/10 text-red-400'
+                              : 'bg-slate-500/10 text-slate-400'
                       }`}
                     >
                       {log.type}
                     </span>
 
-                    <span className="font-semibold text-slate-200">{log.event}</span>
-                    <span className="text-[10px] text-slate-500">[{log.namespace}]</span>
+                    <span className="font-semibold text-slate-200">
+                      {log.event}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      [{log.namespace}]
+                    </span>
                   </div>
 
                   <span className="text-[10px] text-slate-500">
@@ -151,7 +187,9 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme, classN
                         : 'bg-white border-slate-200 text-slate-800'
                     }`}
                   >
-                    {typeof log.data === 'string' ? log.data : JSON.stringify(log.data, null, 2)}
+                    {typeof log.data === 'string'
+                      ? log.data
+                      : JSON.stringify(log.data, null, 2)}
                   </pre>
                 )}
               </div>

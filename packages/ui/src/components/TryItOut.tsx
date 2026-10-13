@@ -74,9 +74,13 @@ export const TryItOut: React.FC<TryItOutProps> = ({
   };
 
   return (
-    <div className={`mt-4 pt-4 border-t ${theme === 'dark' ? 'border-slate-800' : 'border-slate-100'}`}>
+    <div
+      className={`mt-4 pt-4 border-t ${theme === 'dark' ? 'border-slate-800' : 'border-slate-100'}`}
+    >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Try it out</span>
+        <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
+          Try it out
+        </span>
         <button
           onClick={handleExecute}
           disabled={executing}
@@ -102,7 +106,9 @@ export const TryItOut: React.FC<TryItOutProps> = ({
 
       <div className="space-y-3">
         <div>
-          <label className="block text-[11px] font-medium text-slate-400 mb-1">Parameters (JSON Payload)</label>
+          <label className="block text-[11px] font-medium text-slate-400 mb-1">
+            Parameters (JSON Payload)
+          </label>
           <textarea
             value={inputJson}
             onChange={(e) => {
@@ -127,7 +133,10 @@ export const TryItOut: React.FC<TryItOutProps> = ({
         {ackTimeout && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-2 text-xs text-amber-400">
             <Clock size={14} />
-            <span>Acknowledgment timed out after 10 seconds. The server did not respond with an ack callback.</span>
+            <span>
+              Acknowledgment timed out after 10 seconds. The server did not
+              respond with an ack callback.
+            </span>
           </div>
         )}
 

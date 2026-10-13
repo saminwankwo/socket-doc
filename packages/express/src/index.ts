@@ -1,5 +1,5 @@
-import type { Express, RequestHandler } from "express";
-import type { Server as SocketIOServer } from "socket.io";
+import type { Express, RequestHandler } from 'express';
+import type { Server as SocketIOServer } from 'socket.io';
 import {
   EventRegistry,
   type Direction,
@@ -9,10 +9,10 @@ import {
   type JSONSchema,
   type SecuritySpec,
   type SocketDocsSpec,
-} from "@socketdocs/core";
-import type { ZodTypeAny } from "zod";
-import { instrumentSocketIO } from "./instrument.js";
-import { createDocsRouter, mountDocs } from "./router.js";
+} from '@socketdocs/core';
+import type { ZodTypeAny } from 'zod';
+import { instrumentSocketIO } from './instrument.js';
+import { createDocsRouter, mountDocs } from './router.js';
 
 export interface SocketDocsOptions {
   path?: string;
@@ -43,7 +43,11 @@ export interface EventDeclaration {
 }
 
 export interface SocketDocsInstance {
-  event(name: string, def: EventDeclaration, opts?: { namespace?: string }): this;
+  event(
+    name: string,
+    def: EventDeclaration,
+    opts?: { namespace?: string },
+  ): this;
   namespace(name: string, description?: string): this;
   registry: EventRegistry;
   spec(): SocketDocsSpec;
@@ -52,8 +56,12 @@ export interface SocketDocsInstance {
 class SocketDocsInstanceImpl implements SocketDocsInstance {
   constructor(public registry: EventRegistry) {}
 
-  event(name: string, def: EventDeclaration, opts?: { namespace?: string }): this {
-    const ns = opts?.namespace ?? "/";
+  event(
+    name: string,
+    def: EventDeclaration,
+    opts?: { namespace?: string },
+  ): this {
+    const ns = opts?.namespace ?? '/';
     this.registry.declare(ns, name, def as CoreEventDeclaration);
     return this;
   }
@@ -69,14 +77,18 @@ class SocketDocsInstanceImpl implements SocketDocsInstance {
 }
 
 export class SocketDocs {
-  static setup(app: Express, io: SocketIOServer, options: SocketDocsOptions): SocketDocsInstance {
+  static setup(
+    app: Express,
+    io: SocketIOServer,
+    options: SocketDocsOptions,
+  ): SocketDocsInstance {
     // 1. Resolve socketPath (default io.path() or /socket.io)
     let socketPath = options.socketPath;
     if (!socketPath) {
-      if (typeof (io as any).path === "function") {
+      if (typeof (io as any).path === 'function') {
         socketPath = (io as any).path();
       } else {
-        socketPath = "/socket.io";
+        socketPath = '/socket.io';
       }
     }
 
@@ -109,6 +121,9 @@ export class SocketDocs {
 }
 
 export { createDocsRouter, mountDocs, instrumentSocketIO };
-export type { SnifferOptions } from "./instrument.js";
-export type { DocsRouterOptions, MountDocsOptions, ExpressAppLike } from "./router.js";
-
+export type { SnifferOptions } from './instrument.js';
+export type {
+  DocsRouterOptions,
+  MountDocsOptions,
+  ExpressAppLike,
+} from './router.js';

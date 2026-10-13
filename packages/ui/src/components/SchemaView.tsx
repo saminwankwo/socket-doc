@@ -8,7 +8,12 @@ interface SchemaViewProps {
   accent?: 'blue' | 'purple';
 }
 
-export const SchemaView: React.FC<SchemaViewProps> = ({ title, schema, theme, accent = 'blue' }) => {
+export const SchemaView: React.FC<SchemaViewProps> = ({
+  title,
+  schema,
+  theme,
+  accent = 'blue',
+}) => {
   const [copied, setCopied] = useState(false);
 
   if (!schema) return null;
@@ -26,7 +31,9 @@ export const SchemaView: React.FC<SchemaViewProps> = ({ title, schema, theme, ac
   return (
     <div className="min-w-0 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <h4 className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+        <h4
+          className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}
+        >
           {title}
         </h4>
         <button
@@ -37,8 +44,8 @@ export const SchemaView: React.FC<SchemaViewProps> = ({ title, schema, theme, ac
             copied
               ? 'text-green-400'
               : theme === 'dark'
-              ? 'text-slate-500 hover:bg-slate-800/60 hover:text-slate-300'
-              : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                ? 'text-slate-500 hover:bg-slate-800/60 hover:text-slate-300'
+                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
           }`}
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
@@ -52,8 +59,8 @@ export const SchemaView: React.FC<SchemaViewProps> = ({ title, schema, theme, ac
               ? 'bg-slate-950 text-blue-300 border-slate-800'
               : 'bg-slate-950 text-purple-300 border-slate-800'
             : accent === 'blue'
-            ? 'bg-slate-50 text-blue-700 border-slate-200'
-            : 'bg-slate-50 text-purple-700 border-slate-200'
+              ? 'bg-slate-50 text-blue-700 border-slate-200'
+              : 'bg-slate-50 text-purple-700 border-slate-200'
         }`}
       >
         {JSON.stringify(schema, null, 2)}

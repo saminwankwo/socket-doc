@@ -13,7 +13,11 @@ npm install @socketdocs/core zod
 ## The spec model
 
 ```ts
-import type { SocketDocsSpec, EventSpec, NamespaceSpec } from "@socketdocs/core";
+import type {
+  SocketDocsSpec,
+  EventSpec,
+  NamespaceSpec,
+} from '@socketdocs/core';
 ```
 
 A `SocketDocsSpec` looks like:
@@ -21,7 +25,11 @@ A `SocketDocsSpec` looks like:
 ```jsonc
 {
   "specVersion": "1.0",
-  "info": { "title": "Chat API", "version": "1.0.0", "description": "Realtime chat" },
+  "info": {
+    "title": "Chat API",
+    "version": "1.0.0",
+    "description": "Realtime chat",
+  },
   "servers": [{ "url": "http://localhost:3000", "label": "Local" }],
   "socketPath": "/socket.io",
   "security": [{ "name": "token", "type": "apiKey", "in": "auth" }],
@@ -33,18 +41,24 @@ A `SocketDocsSpec` looks like:
         "send_message": {
           "name": "send_message",
           "namespace": "/chat",
-          "direction": "client_to_server",     // client_to_server | server_to_client | bidirectional
-          "kind": "request_response",          // fire_and_forget | request_response (optional)
-          "source": "declared",                // sniffed | declared | decorator
+          "direction": "client_to_server", // client_to_server | server_to_client | bidirectional
+          "kind": "request_response", // fire_and_forget | request_response (optional)
+          "source": "declared", // sniffed | declared | decorator
           "summary": "Send a message to a room",
-          "payloadSchema": { /* JSON Schema */ },
-          "responseSchema": { /* JSON Schema, ack payload */ },
-          "errors": [{ "code": "INVALID_ROOM", "description": "Room does not exist" }],
-          "tags": ["chat"]
-        }
-      }
-    }
-  }
+          "payloadSchema": {
+            /* JSON Schema */
+          },
+          "responseSchema": {
+            /* JSON Schema, ack payload */
+          },
+          "errors": [
+            { "code": "INVALID_ROOM", "description": "Room does not exist" },
+          ],
+          "tags": ["chat"],
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -55,25 +69,25 @@ A `SocketDocsSpec` looks like:
 `EventRegistry` holds events in memory and emits a change notification for every update.
 
 ```ts
-import { EventRegistry } from "@socketdocs/core";
+import { EventRegistry } from '@socketdocs/core';
 
 const registry = new EventRegistry({
-  info: { title: "Chat API", version: "1.0.0" },
-  socketPath: "/socket.io",
+  info: { title: 'Chat API', version: '1.0.0' },
+  socketPath: '/socket.io',
 });
 
-registry.onChange(() => console.log("spec changed"));
+registry.onChange(() => console.log('spec changed'));
 
 // From sniffing: fills blanks only, never overwrites declared fields.
-registry.observe("/chat", "typing", { direction: "client_to_server" });
+registry.observe('/chat', 'typing', { direction: 'client_to_server' });
 
 // From declarations: wins over sniffed data, sets source: "declared".
-registry.declare("/chat", "send_message", {
-  summary: "Send a message to a room",
+registry.declare('/chat', 'send_message', {
+  summary: 'Send a message to a room',
   payload: z.object({ text: z.string(), roomId: z.string() }),
 });
 
-registry.namespace("/chat", "Room-based chat");
+registry.namespace('/chat', 'Room-based chat');
 const spec: SocketDocsSpec = registry.toSpec();
 ```
 
@@ -88,19 +102,19 @@ Merge rules:
 Zod and JSON Schema inputs are converted **at registration time**:
 
 ```ts
-import { normalizeSchema } from "@socketdocs/core";
+import { normalizeSchema } from '@socketdocs/core';
 
 normalizeSchema(z.object({ id: z.string() })); // -> JSON Schema
-normalizeSchema({ type: "object" });           // treated as JSON Schema already
-normalizeSchema(undefined);                    // -> undefined
+normalizeSchema({ type: 'object' }); // treated as JSON Schema already
+normalizeSchema(undefined); // -> undefined
 ```
 
 ## lintSpec and toAsyncApi
 
 ```ts
-import { lintSpec, toAsyncApi } from "@socketdocs/core";
+import { lintSpec, toAsyncApi } from '@socketdocs/core';
 
-const issues = lintSpec(spec);   // [{ type: "error" | "warning", message, path }]
+const issues = lintSpec(spec); // [{ type: "error" | "warning", message, path }]
 const asyncapi = toAsyncApi(spec); // AsyncAPI 3.0 document
 ```
 

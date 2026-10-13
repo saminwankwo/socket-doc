@@ -8,16 +8,16 @@ Repository: `socketdocs` (npm monorepo, version `0.3.0` declared in root `packag
 
 ### Packages
 
-| Package | Path | Purpose | Public Exports | Depends on |
-|---|---|---|---|---|
-| `@socketdocs/core` | `packages/core` | Contract builder, validation, plugins, lint, AsyncAPI, HTML UI generator | `createContract`, `Contract`, `ContractOptions`, `EventDefinition`, `NamespaceDefinition`, `ErrorDefinition`, `SecurityRequirement`, `Direction`, `EventType`, `SocketEventDoc`, `SocketDocsSchema`, `convertContractToSocketDocsSchema`, `convertSocketDocsSchemaToContract`, `createValidator`, `Validator`, `SocketDocsPlugin`, `PluginManager`, `generateHtml`, `lintSpec`, `LintIssue`, `convertToAsyncApi`, `Namespace`, `Event` (decorators) | `zod`, `zod-to-json-schema`, `ajv` |
-| `@socketdocs/server` | `packages/server` | Express middleware + NestJS module to serve the docs UI and schema JSON | `socketDocs(options)`, `SocketDocsModule.setup(...)`, `SocketDocsOptions` | `@socketdocs/core`, `express` (peer-ish), `@nestjs/*` dev-only |
-| `@socketdocs/socket-io` | `packages/socket-io` | Socket.IO runtime adapter (validation/auth/handler binding) | `bindSocketioAdapter`, `SocketioAdapterOptions`, `HandlerContext`, `EventHandler`, `NamespaceHandlers`, `AdapterHandlers` | `@socketdocs/core`, `socket.io`, `zod` |
-| `@socketdocs/ws` | `packages/ws` | Raw `ws` adapter + HTTP docs helper | `bindWsAdapter`, `handleWsDocs`, `WsAdapterOptions` | `@socketdocs/core`, `ws`, `zod` |
-| `@socketdocs/fastify` | `packages/fastify` | Fastify (`@fastify/websocket`) adapter + docs route | `bindFastifyAdapter`, `serveFastifyDocs`, `FastifyAdapterOptions` | `@socketdocs/core`, `fastify`, `@fastify/websocket` |
-| `@socketdocs/nestjs` | `packages/nestjs` | NestJS decorators + module that scans providers and populates a contract | `Namespace`, `Event`, `SocketDocsModule.register`, `SocketDocsModule` | `@socketdocs/core`, `@nestjs/common`, `@nestjs/core`, `@nestjs/websockets`, `reflect-metadata` |
-| `@socketdocs/cli` | `packages/cli` | CLI binary (`socketdocs`) | bin entry only | `@socketdocs/core`, `commander`, `jiti`, `ajv`, `ajv-formats`, `@faker-js/faker`, `socket.io`, `ts-node` |
-| `@socketdocs/docs-server` | `packages/docs-server` | React/Vite SPA docs UI (**private**, not published) | — | `react`, `react-dom`, `socket.io-client`, `lucide-react`, `clsx`, `tailwind-merge` (dev: `vite`, `@vitejs/plugin-react`, `tailwindcss`) |
+| Package                   | Path                   | Purpose                                                                  | Public Exports                                                                                                                                                                                                                                                                                                                                                                                                                                      | Depends on                                                                                                                              |
+| ------------------------- | ---------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `@socketdocs/core`        | `packages/core`        | Contract builder, validation, plugins, lint, AsyncAPI, HTML UI generator | `createContract`, `Contract`, `ContractOptions`, `EventDefinition`, `NamespaceDefinition`, `ErrorDefinition`, `SecurityRequirement`, `Direction`, `EventType`, `SocketEventDoc`, `SocketDocsSchema`, `convertContractToSocketDocsSchema`, `convertSocketDocsSchemaToContract`, `createValidator`, `Validator`, `SocketDocsPlugin`, `PluginManager`, `generateHtml`, `lintSpec`, `LintIssue`, `convertToAsyncApi`, `Namespace`, `Event` (decorators) | `zod`, `zod-to-json-schema`, `ajv`                                                                                                      |
+| `@socketdocs/server`      | `packages/server`      | Express middleware + NestJS module to serve the docs UI and schema JSON  | `socketDocs(options)`, `SocketDocsModule.setup(...)`, `SocketDocsOptions`                                                                                                                                                                                                                                                                                                                                                                           | `@socketdocs/core`, `express` (peer-ish), `@nestjs/*` dev-only                                                                          |
+| `@socketdocs/socket-io`   | `packages/socket-io`   | Socket.IO runtime adapter (validation/auth/handler binding)              | `bindSocketioAdapter`, `SocketioAdapterOptions`, `HandlerContext`, `EventHandler`, `NamespaceHandlers`, `AdapterHandlers`                                                                                                                                                                                                                                                                                                                           | `@socketdocs/core`, `socket.io`, `zod`                                                                                                  |
+| `@socketdocs/ws`          | `packages/ws`          | Raw `ws` adapter + HTTP docs helper                                      | `bindWsAdapter`, `handleWsDocs`, `WsAdapterOptions`                                                                                                                                                                                                                                                                                                                                                                                                 | `@socketdocs/core`, `ws`, `zod`                                                                                                         |
+| `@socketdocs/fastify`     | `packages/fastify`     | Fastify (`@fastify/websocket`) adapter + docs route                      | `bindFastifyAdapter`, `serveFastifyDocs`, `FastifyAdapterOptions`                                                                                                                                                                                                                                                                                                                                                                                   | `@socketdocs/core`, `fastify`, `@fastify/websocket`                                                                                     |
+| `@socketdocs/nestjs`      | `packages/nestjs`      | NestJS decorators + module that scans providers and populates a contract | `Namespace`, `Event`, `SocketDocsModule.register`, `SocketDocsModule`                                                                                                                                                                                                                                                                                                                                                                               | `@socketdocs/core`, `@nestjs/common`, `@nestjs/core`, `@nestjs/websockets`, `reflect-metadata`                                          |
+| `@socketdocs/cli`         | `packages/cli`         | CLI binary (`socketdocs`)                                                | bin entry only                                                                                                                                                                                                                                                                                                                                                                                                                                      | `@socketdocs/core`, `commander`, `jiti`, `ajv`, `ajv-formats`, `@faker-js/faker`, `socket.io`, `ts-node`                                |
+| `@socketdocs/docs-server` | `packages/docs-server` | React/Vite SPA docs UI (**private**, not published)                      | —                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `react`, `react-dom`, `socket.io-client`, `lucide-react`, `clsx`, `tailwind-merge` (dev: `vite`, `@vitejs/plugin-react`, `tailwindcss`) |
 
 ### Build setup
 
@@ -37,28 +37,40 @@ All types live in `packages/core/src/contract.ts`.
 **Contract & namespace/event (fluent model):**
 
 ```ts
-export type Direction = 'client_to_server' | 'server_to_client' | 'bidirectional';
+export type Direction =
+  | 'client_to_server'
+  | 'server_to_client'
+  | 'bidirectional';
 export type EventType = 'fire_and_forget' | 'request_response';
 
-export interface ErrorDefinition { code: string | number; description: string; }
+export interface ErrorDefinition {
+  code: string | number;
+  description: string;
+}
 
-export interface EventDefinition<P extends ZodTypeAny = any, R extends ZodTypeAny = any> {
+export interface EventDefinition<
+  P extends ZodTypeAny = any,
+  R extends ZodTypeAny = any,
+> {
   name: string;
   direction: Direction;
   type?: EventType;
   summary?: string;
   description?: string;
-  payload?: P;            // Zod
-  response?: R;           // Zod
-  payloadSchema?: any;    // raw JSON Schema (alt)
-  responseSchema?: any;   // raw JSON Schema (alt)
+  payload?: P; // Zod
+  response?: R; // Zod
+  payloadSchema?: any; // raw JSON Schema (alt)
+  responseSchema?: any; // raw JSON Schema (alt)
   roles?: string[];
   authRequired?: boolean;
   examples?: any[];
   errors?: ErrorDefinition[];
 }
 
-export interface NamespaceDefinition { name: string; events: Map<string, EventDefinition>; }
+export interface NamespaceDefinition {
+  name: string;
+  events: Map<string, EventDefinition>;
+}
 ```
 
 **Security scheme:**
@@ -76,7 +88,9 @@ export interface SecurityRequirement {
 
 ```ts
 export interface ContractOptions {
-  name: string; version: string; description?: string;
+  name: string;
+  version: string;
+  description?: string;
   security?: SecurityRequirement[];
 }
 ```
@@ -86,12 +100,12 @@ export interface ContractOptions {
 ```ts
 export interface SocketEventDoc {
   name: string;
-  direction: "emit" | "on" | "both";          // different vocabulary!
+  direction: 'emit' | 'on' | 'both'; // different vocabulary!
   namespace?: string;
   room?: string;
   description: string;
-  payload: any;            // JSON Schema
-  acknowledgement?: any;   // JSON Schema (renamed from "response")
+  payload: any; // JSON Schema
+  acknowledgement?: any; // JSON Schema (renamed from "response")
   errors?: Array<{ code: string; message: string }>;
   example?: { emit?: unknown; receive?: unknown };
   tags?: string[];
@@ -122,6 +136,7 @@ Yes, there are **two distinct formats**:
 - **`SocketDocsSchema` / `socketdocs.json`**: flat `events[]` array, directions `emit | on | both`, JSON-Schema-only payload, `acknowledgement` instead of `response`, errors shaped `{ code, message }`, plus `room`/`tags`/`deprecated`/`example`.
 
 Reconciliation functions:
+
 - `convertContractToSocketDocsSchema(contract, servers)` (contract.ts L289-337): maps direction (`client_to_server → emit`, `server_to_client → on`, `bidirectional → both`), maps errors `description → message`, namespaces → `namespace` string.
 - `convertSocketDocsSchemaToContract(schema)` (contract.ts L344-381): inverse mapping, stores `payloadSchema`/`responseSchema` (Zod not reconstructed), maps `tags → roles`.
 
@@ -134,6 +149,7 @@ The `generateSpec()` output (used by UI / AsyncAPI / lint) is a **third** interm
 ### `socketDocs()` (Express) — `packages/server/src/index.ts` L60-111
 
 Returns an Express `Router` mounted at `options.path` (default `/socket-docs`). Routes registered:
+
 - `GET /schema.json` → returns the resolved `SocketDocsSchema` (from `options.schema` or by converting `options.contract`).
 - Static files: tries `express.static(join(__dirname, "../../docs-server/dist"))` if that path exists.
 - `GET *` → SPA fallback: serves `docs-server/dist/index.html` if present, **otherwise** calls `generateHtml(spec)` (inline HTML string from `ui.ts`) as fallback.
@@ -147,6 +163,7 @@ Grabs the raw Express instance via `app.getHttpAdapter().getInstance()` and moun
 ### How the UI is served
 
 Two mechanisms coexist:
+
 1. **Preferred**: static `docs-server/dist` (Vite-built React SPA). But `@socketdocs/docs-server` is `private: true` and is **not** published to npm. The server package computes the path as `join(__dirname, "../../docs-server/dist")` — from `packages/server/dist/index.js` this resolves to `packages/docs-server/dist`. After npm publish, that relative path no longer exists, so end-users always get the fallback.
 2. **Fallback**: `generateHtml(spec)` emits a single self-contained HTML string (Tailwind via CDN, highlight.js via CDN, Google Fonts). No playground — it's read-only docs.
 
@@ -176,13 +193,16 @@ All adapters (`socket-io`, `ws`, `fastify`) follow the same pattern. Lifecycle f
 ## 4. DOCUMENTATION UI
 
 ### Tech stack
+
 - **Framework**: React 18 (despite CHANGELOG claiming React 19), TypeScript, Vite 5, Tailwind CSS 3, `lucide-react` icons, `socket.io-client`.
 - **Files**: `packages/docs-server/src/App.tsx` (single 576-line component), `main.tsx`, `index.css`, `index.html`.
 
 ### How it receives the spec
+
 The SPA `fetch('./schema.json')` on mount (App.tsx L46-63) — relies on the server middleware exposing `GET /<path>/schema.json`. The spec shape expected is the **`generateSpec()`** output (`specVersion`, `info`, `namespaces`), **not** `SocketDocsSchema`.
 
 ### UI features
+
 - **Explorer**: left sidebar with tab switch (Documentation / Playground), search box, namespace list. Main area: API title/description, per-namespace event cards showing direction badge (`client_to_server` green / `server_to_client` purple / `bidirectional` blue), type badge, AUTH badge, summary, errors list, payload/response JSON (preformatted, no syntax highlighting in the React version).
 - **Playground**: connection panel (URL input, Connect/Disconnect, auth type None/Bearer/API Key + token), event selector (namespace + event, filtered to non-`server_to_client`), JSON payload textarea, Send button. Right side: event log with color-coded in/out/error/info entries, timestamps, auto-scroll, clear button.
 - **Connection**: creates `io(socketUrl, { path: namespace === 'default' ? '/socket.io' : '/' + namespace, auth })`. Bearer → `auth.token = 'Bearer …'`; apiKey → `auth.apiKey = …`. Registers listeners for every spec event to log incoming. Sends via `socket.emit(selectedEvent, payload, ack)`.
@@ -190,6 +210,7 @@ The SPA `fetch('./schema.json')` on mount (App.tsx L46-63) — relies on the ser
 - **Theme toggle**: dark/light via `document.documentElement.classList.toggle('dark')` (Tailwind `dark:` classes).
 
 ### Is the UI a separate package? How shipped?
+
 It is `@socketdocs/docs-server`, **private** (`"private": true`). It is **not** published to npm. The `@socketdocs/server` package references its `dist` via a relative path that only resolves inside the monorepo. So a published consumer of `@socketdocs/server` never gets the React SPA — only the `generateHtml()` fallback (which is read-only, no playground). The root `build:docs` script builds it but is not part of `npm run build`.
 
 ---
@@ -198,21 +219,23 @@ It is `@socketdocs/docs-server`, **private** (`"private": true`). It is **not** 
 
 All commands in `packages/cli/src/index.ts`. The binary is `socketdocs` (`bin` → `dist/index.js`).
 
-| Command | What it does | How contract is loaded |
-|---|---|---|
-| `init` | Writes `socketdocs.config.json` (`{name, version, contractFile: "./socketdocs.contract.ts", outputFile: "./wsdoc.json"}`) and a sample `socketdocs.contract.ts` if absent. | n/a |
-| `generate-spec` | Reads config, loads the `.ts` contract via **jiti**, calls `contract.generateSpec()`, writes JSON to `config.outputFile`. | `jiti(import.meta.url, { interopDefault: true })` then `load(contractFilePath)`; duck-types `contract.generateSpec`. |
-| `serve-docs` | Starts a plain `http` server. Serves `GET /api/spec` (the parsed spec JSON) and everything else as `generateHtml(spec)`. Auto-increments port on `EADDRINUSE`. | Reads `--spec` JSON file (default `./wsdoc.json`) — already-generated spec, **not** the `.ts` contract. |
-| `generate-sdk` | Reads spec JSON, dispatches to `TypescriptGenerator`/`GoGenerator`/`PythonGenerator`/`PhpGenerator`, writes output file. | Spec JSON file only. |
-| `validate-contract` | Loads the `.ts` contract via jiti, performs structural validation (namespaces Map, events Map, direction enum, errors shape, request_response needs response), calls `generateSpec()` and `lintSpec()`, prints issues, exits 1 on errors. | jiti load of `config.contractFile`. |
-| `mock-server` | Reads spec JSON, creates a Socket.IO server, sets up namespaces from `spec.namespaces`, listens for client_to_server/bidirectional events, validates payload with Ajv, generates mock response data via `@faker-js/faker` (`generateMockData`), emits mock server-to-client events on timers. | Spec JSON file only. |
-| `lint` | Loads `.ts` contract via jiti, calls `generateSpec()`, runs `lintSpec(spec)`, prints issues. | jiti load of `config.contractFile`. |
-| `export-asyncapi` | Reads spec JSON, calls `convertToAsyncApi(spec)`, writes `asyncapi.json`. | Spec JSON file only. |
+| Command             | What it does                                                                                                                                                                                                                                                                                  | How contract is loaded                                                                                               |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `init`              | Writes `socketdocs.config.json` (`{name, version, contractFile: "./socketdocs.contract.ts", outputFile: "./wsdoc.json"}`) and a sample `socketdocs.contract.ts` if absent.                                                                                                                    | n/a                                                                                                                  |
+| `generate-spec`     | Reads config, loads the `.ts` contract via **jiti**, calls `contract.generateSpec()`, writes JSON to `config.outputFile`.                                                                                                                                                                     | `jiti(import.meta.url, { interopDefault: true })` then `load(contractFilePath)`; duck-types `contract.generateSpec`. |
+| `serve-docs`        | Starts a plain `http` server. Serves `GET /api/spec` (the parsed spec JSON) and everything else as `generateHtml(spec)`. Auto-increments port on `EADDRINUSE`.                                                                                                                                | Reads `--spec` JSON file (default `./wsdoc.json`) — already-generated spec, **not** the `.ts` contract.              |
+| `generate-sdk`      | Reads spec JSON, dispatches to `TypescriptGenerator`/`GoGenerator`/`PythonGenerator`/`PhpGenerator`, writes output file.                                                                                                                                                                      | Spec JSON file only.                                                                                                 |
+| `validate-contract` | Loads the `.ts` contract via jiti, performs structural validation (namespaces Map, events Map, direction enum, errors shape, request_response needs response), calls `generateSpec()` and `lintSpec()`, prints issues, exits 1 on errors.                                                     | jiti load of `config.contractFile`.                                                                                  |
+| `mock-server`       | Reads spec JSON, creates a Socket.IO server, sets up namespaces from `spec.namespaces`, listens for client_to_server/bidirectional events, validates payload with Ajv, generates mock response data via `@faker-js/faker` (`generateMockData`), emits mock server-to-client events on timers. | Spec JSON file only.                                                                                                 |
+| `lint`              | Loads `.ts` contract via jiti, calls `generateSpec()`, runs `lintSpec(spec)`, prints issues.                                                                                                                                                                                                  | jiti load of `config.contractFile`.                                                                                  |
+| `export-asyncapi`   | Reads spec JSON, calls `convertToAsyncApi(spec)`, writes `asyncapi.json`.                                                                                                                                                                                                                     | Spec JSON file only.                                                                                                 |
 
 ### Commands the request lists that DON'T exist
+
 The request lists `validate`, `serve`, `build`. The **CHANGELOG** (`CHANGELOG.md` L14-17) claims `serve` (alias for serve-docs), `build` (static HTML), and `validate` (validate `socketdocs.json`) were added in 0.4.0 — **but none of these three commands exist in the CLI source**. Only the 8 commands above are registered.
 
 ### Overlap/duplication
+
 - `validate-contract` and `lint` both load the contract, call `generateSpec()`, and run `lintSpec()`. `validate-contract` adds structural checks before linting; `lint` is a strict subset.
 - `serve-docs` and `mock-server` both spin up HTTP servers; `serve-docs` is read-only docs, `mock-server` is a live Socket.IO mock.
 - `generate-spec` is a prerequisite for `serve-docs`, `generate-sdk`, `mock-server`, `export-asyncapi` (all consume the JSON spec rather than the `.ts` contract directly).
@@ -222,7 +245,9 @@ The request lists `validate`, `serve`, `build`. The **CHANGELOG** (`CHANGELOG.md
 ## 6. OTHER FEATURES
 
 ### Plugin system — `packages/core/src/plugins.ts`
+
 `SocketDocsPlugin` interface with optional hooks:
+
 ```ts
 onSetup?: (contract) => void
 onEvent?: (eventName, payload, namespace) => void
@@ -230,12 +255,15 @@ onResponse?: (eventName, response, namespace) => void
 onError?: (eventName, error, namespace) => void
 onSpecGenerated?: (spec) => void
 ```
+
 `PluginManager` (instantiated inside `createContract`) registers plugins and broadcasts synchronously. Registered via `contract.registerPlugin(plugin)`. Hooks are fire-and-forget — no return-value mutation, no `onEvent` cannot short-circuit the handler. `notifySpecGenerated` exists but is **never called** anywhere in the codebase (search confirms only `notifyEvent`/`notifyResponse`/`notifyError` are used in adapters).
 
 **Assessment: partial.** Hooks exist and are wired into the three adapters, but `onSpecGenerated` is dead, plugins can't mutate/block, and there are no bundled plugins.
 
 ### SDK generators — `packages/cli/src/generators/`
+
 Interface `SdkGenerator { generate(spec): string; getFileExtension(): string }`. Implementations are hand-rolled string concatenation (no template engine):
+
 - `TypescriptGenerator` (covers `ts` and `js`): emits a `SocketDocsClient` class with one method per client-sendable event; request-response wraps `socket.emit` in a Promise. **No type definitions generated** despite `ts` target.
 - `GoGenerator`: stub — `fmt.Printf` + `return nil`, no actual socket emit.
 - `PythonGenerator`: calls `self.socket.emit(eventName, payload)` — assumes a socket.io-client-like API.
@@ -244,16 +272,19 @@ Interface `SdkGenerator { generate(spec): string; getFileExtension(): string }`.
 **Assessment: stub/partial.** TS is usable as a thin wrapper; Go is a no-op stub; Py/PHP assume undefined client APIs. No schema-based typing, no namespace scoping in generated methods.
 
 ### Mock server — `mock-server` CLI command
+
 Uses Socket.IO + Ajv + faker. Generates data from JSON Schema by type (handles `string` formats `email/uri/uuid/date-time`, `enum`, `pattern`, `number/integer` min/max, `array`, `object` required+optional, `oneOf`/`anyOf`). Emits random server-to-client events on timers.
 
 **Assessment: complete and functional** for the spec-JSON path.
 
 ### AsyncAPI export — `packages/core/src/asyncapi.ts`
+
 `convertToAsyncApi(spec)` → AsyncAPI 3.0 doc. Maps namespaces → channels, events → `components.messages`, builds `send`/`receive` operations per channel. Security schemes mapped (apiKey/http/oauth2; oauth2 `flows` is an empty placeholder). Errors are **not** mapped. Server is hardcoded to `localhost:{port}` (ignores `spec.servers`).
 
 **Assessment: partial.** Channels/messages/operations/security are produced; errors, tags, examples mapping, and real server URLs are missing or stubbed.
 
 ### Linting — `packages/core/src/lint.ts`
+
 `lintSpec(spec)` returns `LintIssue[]` (`{ type: 'error'|'warning', message, path }`). Rules: missing description, namespace kebab-case, duplicate event names, event snake_case, missing summary+description, missing payload schema (unless server_to_client), request_response missing response schema, authRequired without global security, invalid roles, non-object examples, missing/duplicate error codes, missing error description, empty namespaces, no namespaces.
 
 **Assessment: complete** as a style/sanity linter.
@@ -263,6 +294,7 @@ Uses Socket.IO + Ajv + faker. Generates data from JSON Schema by type (handles `
 ## 7. QUALITY ASSESSMENT
 
 ### What works well / worth keeping
+
 - The **fluent contract builder** (`createContract` / `.namespace().event().errors()`) is clean and the Zod-first approach gives both runtime validation and JSON Schema generation in one place.
 - **`generateSpec()`** centralizes Zod→JSON Schema conversion cleanly.
 - **Three runtime adapters** share a consistent auth → validate → plugins → handler → response-validate → error lifecycle.
@@ -271,6 +303,7 @@ Uses Socket.IO + Ajv + faker. Generates data from JSON Schema by type (handles `
 - The **`generateHtml()` fallback** means docs always render even without the React build.
 
 ### Confusing / duplicated / fragile / half-finished
+
 - **Two-and-a-half schema models**: fluent `Contract`, flat `SocketDocsSchema`, and the `generateSpec()` output. Consumers must know which each tool expects (CLI spec-JSON tools expect the `generateSpec()` shape; `socketdocs.json` is the flat shape; the React UI fetches `generateSpec()` shape from `/schema.json` but the server's `getSchema()` returns `SocketDocsSchema` — see bug below).
 - **Stale compiled files in `src/`**: `packages/ws/src/index.js`, `packages/ws/src/index.d.ts`, and the equivalent in `fastify/src/` are committed build artifacts sitting next to the `.ts` source. `tsc` will collide with these.
 - **`docs-server` not shipped**: private package; server references its `dist` by relative path that breaks after npm publish. End-users never get the playground.
@@ -283,6 +316,7 @@ Uses Socket.IO + Ajv + faker. Generates data from JSON Schema by type (handles `
 - **SDK generators**: Go is a no-op stub; all are string-concatenation with no typing.
 
 ### Known bugs
+
 1. **`/schema.json` returns the wrong shape for the React UI.** `socketDocs()`'s `getSchema()` returns a `SocketDocsSchema` (flat `events[]`, directions `emit/on/both`), but the React `App.tsx` expects the `generateSpec()` shape (`namespaces.*.events.*`, directions `client_to_server/...`). When the SPA is served, `fetch('./schema.json')` returns data the UI can't render (`spec.namespaces` is `undefined`). The fallback `generateHtml()` path converts to the right shape internally, so only the React SPA path is broken.
 2. **`docs-server` `socketUrl` defaults to `http://localhost:3000`** regardless of where docs are hosted; no inference from `window.location`.
 3. **`contract.ts` `registerNamespaceClass`** (L220-232) drops payload/response schemas — it only copies `name` and `direction`, so decorator-defined events have no validation.
@@ -291,6 +325,7 @@ Uses Socket.IO + Ajv + faker. Generates data from JSON Schema by type (handles `
 6. **`lintSpec` errors field type** in `wsdoc.schema.json` is `object` (`additionalProperties: string`), but the code uses an **array** of `{code, description}`. The JSON Schema and runtime disagree.
 
 ### Missing / failing tests
+
 - Only 3 test files: `contract.test.ts` (10 tests, covers create/generateSpec/errors/security/auth/examples), `ws-adapter.test.ts` (1 test — just checks `bindWsAdapter` returns a `send` function), `fastify-adapter.test.ts` (1 test — checks the function is defined).
 - No tests for: socket-io adapter, server middleware, NestJS module, CLI commands, SDK generators, mock server, AsyncAPI conversion, lint rules, schema conversion functions, `generateHtml`.
 - Adapter tests import from `../../ws/src/index.js` / `../../fastify/src/index.js` — they exercise the stale `.js` files, not the `.ts`.

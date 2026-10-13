@@ -1,0 +1,19 @@
+# dependencies & build output
+node_modules
+**/dist
+**/ui-dist
+coverage
+*.tsbuildinfo
+
+# lockfile (npm-generated)
+package-lock.json
+
+# local scratch / instruction files (gitignored or local-only)
+build.md
+README1.md
+CLEANUP_PROMPT.md
+UI_FOOTER_AND_RESPONSIVE_PROMPT.md
+
+# e2e artifacts
+packages/ui/e2e/shots
+packages/ui/test-results

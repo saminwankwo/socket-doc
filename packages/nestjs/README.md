@@ -15,19 +15,19 @@ Peers: `@nestjs/common`, `@nestjs/core`, `@nestjs/websockets` (v10–v12), `refl
 ## Usage
 
 ```ts
-import { NestFactory } from "@nestjs/core";
-import { IoAdapter } from "@nestjs/platform-socket.io";
-import { SocketDocsModule } from "@socketdocs/nestjs";
-import { AppModule } from "./app.module.js";
+import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { SocketDocsModule } from '@socketdocs/nestjs';
+import { AppModule } from './app.module.js';
 
 const app = await NestFactory.create(AppModule);
 app.useWebSocketAdapter(new IoAdapter(app)); // lets SocketDocs sniff server -> client events
 
-SocketDocsModule.setup("/socket-docs", app, {
-  title: "Chat API",
-  version: "1.0.0",
-  description: "Realtime chat",
-  security: [{ name: "token", type: "apiKey", in: "auth" }],
+SocketDocsModule.setup('/socket-docs', app, {
+  title: 'Chat API',
+  version: '1.0.0',
+  description: 'Realtime chat',
+  security: [{ name: 'token', type: 'apiKey', in: 'auth' }],
   // auth: { username: "admin", password: "secret" },  // protects the docs page
 });
 

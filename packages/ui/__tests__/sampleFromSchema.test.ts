@@ -11,14 +11,22 @@ describe('sampleFromSchema', () => {
   });
 
   it('respects default values and examples', () => {
-    expect(sampleFromSchema({ type: 'string', default: 'custom' })).toBe('custom');
-    expect(sampleFromSchema({ type: 'string', examples: ['sample_val'] })).toBe('sample_val');
+    expect(sampleFromSchema({ type: 'string', default: 'custom' })).toBe(
+      'custom',
+    );
+    expect(sampleFromSchema({ type: 'string', examples: ['sample_val'] })).toBe(
+      'sample_val',
+    );
     expect(sampleFromSchema({ enum: ['alpha', 'beta'] })).toBe('alpha');
   });
 
   it('handles string formats: date-time, email, uuid', () => {
-    expect(sampleFromSchema({ type: 'string', format: 'email' })).toBe('user@example.com');
-    expect(sampleFromSchema({ type: 'string', format: 'uuid' })).toBe('123e4567-e89b-12d3-a456-426614174000');
+    expect(sampleFromSchema({ type: 'string', format: 'email' })).toBe(
+      'user@example.com',
+    );
+    expect(sampleFromSchema({ type: 'string', format: 'uuid' })).toBe(
+      '123e4567-e89b-12d3-a456-426614174000',
+    );
   });
 
   it('handles nested objects and arrays', () => {
@@ -51,4 +59,3 @@ describe('sampleFromSchema', () => {
     });
   });
 });
-
