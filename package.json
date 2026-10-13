@@ -31,8 +31,9 @@
   ],
   "scripts": {
     "clean": "rm -rf packages/*/dist && rm -rf packages/*/tsconfig.tsbuildinfo",
-    "build": "npm run clean && tsc -b && npm run build:ui",
+    "build": "npm run clean && npm run build:ui && tsc -b && npm run copy:express-ui",
     "build:ui": "cd packages/ui && npm run build",
+    "copy:express-ui": "cd packages/express && npm run copy:ui",
     "test": "npm test --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
