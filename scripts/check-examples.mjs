@@ -109,7 +109,7 @@ async function main() {
     );
     check(
       'UI serves an HTML page',
-      (await page.text()).includes('<!DOCTYPE html>'),
+      (await page.text()).toLowerCase().includes('<!doctype html>'),
     );
     assertEqual('spec version', spec.specVersion, '1.0');
     assertEqual('spec title', spec.info.title, 'Chat API');

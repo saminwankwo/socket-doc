@@ -79,7 +79,7 @@ describe('@socketdocs/express', () => {
     const res = await fetch(`${baseUrl}/socket-docs/`);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('<!DOCTYPE html>');
+    expect(html.toLowerCase()).toContain('<!doctype html>');
   });
 
   it('serves GET /socket-docs/spec.json with valid SocketDocsSpec', async () => {
