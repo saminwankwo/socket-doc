@@ -113,5 +113,6 @@ Every tarball contains only `dist/` (+ `ui-dist/` for express), `package.json`, 
 | `npx knip`                           | clean                                                                                                    |
 | `npm run check:circular`             | no circular dependencies (madge skips non-TS imports such as `./index.css`, which it counts as warnings) |
 | `npm run test:e2e -w @socketdocs/ui` | 12/12 (from the responsive pass; unchanged)                                                              |
+| CI (GitHub Actions, `ubuntu-latest`) | green after the lockfile fix: `npm ci` → clean → build → test → lint → check:examples → pack test        |
 
 CI now runs: `npm ci` → clean → build → test → lint → check:examples → pack test.
