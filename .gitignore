@@ -3,6 +3,7 @@ old
 
 node_modules*
 dist
+*.tsbuildinfo
 package-lock.json*
 
 .DS_Store*
@@ -11,3 +12,6 @@ SOCKETDOCS_IMPROVEMENTS.md
 old
 
 build.md
+
+packages/express/ui-dist/
+packages/ui/dist/

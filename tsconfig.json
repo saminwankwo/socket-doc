@@ -2,11 +2,6 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/cli" },
-    { "path": "packages/fastify" },
-    { "path": "packages/nestjs" },
-    { "path": "packages/socket-io" },
-    { "path": "packages/ws" },
     { "path": "packages/docs-server" }
   ]
 }

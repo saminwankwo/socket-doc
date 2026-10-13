@@ -17,6 +17,6 @@
     "paths": {
       "@socketdocs/core": ["packages/core/src/index.ts"]
     },
-    "types": ["node", "jest"]
+    "types": ["node"]
   }
 }

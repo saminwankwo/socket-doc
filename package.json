@@ -1,18 +1,17 @@
 {
   "name": "socketdocs",
   "private": true,
-  "version": "0.3.0",
-  "description": "OpenAPI-style documentation framework for WebSocket APIs",
+  "version": "1.0.0-alpha.0",
+  "description": "Swagger-style documentation for Socket.IO",
   "keywords": [
     "websocket",
-    "openapi",
+    "socket.io",
     "documentation",
-    "validation",
+    "openapi",
+    "swagger",
     "zod",
     "json-schema",
     "realtime",
-    "socket.io",
-    "fastify",
     "nestjs",
     "typescript"
   ],
@@ -33,23 +32,20 @@
   "scripts": {
     "clean": "rm -rf packages/*/dist && rm -rf packages/*/tsconfig.tsbuildinfo",
     "build": "npm run clean && tsc -b",
-    "build:docs": "cd packages/docs-server && npm run build || true",
+    "build:ui": "cd packages/docs-server && npm run build",
     "test": "npm test --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,js,json,md}\""
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/jest": "^30.0.0",
     "@types/node": "^25.9.2",
     "@typescript-eslint/eslint-plugin": "^8.60.1",
     "@typescript-eslint/parser": "^8.60.1",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
-    "jest": "^30.4.2",
     "lightningcss": "^1.32.0",
     "prettier": "^3.8.3",
-    "ts-jest": "^29.4.1",
     "typescript": "^6.0.3"
   }
 }
