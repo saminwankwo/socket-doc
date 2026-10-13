@@ -1,15 +1,14 @@
 {
   "name": "@socketdocs/core",
-  "version": "0.3.0",
+  "version": "1.0.0-alpha.0",
   "type": "module",
-  "description": "Core engine for SocketDocs, providing contract definitions and validation logic.",
+  "description": "Core spec model, registry, and lint/AsyncAPI export for SocketDocs.",
   "keywords": [
     "socketdocs",
     "websocket",
-    "validation",
+    "socket.io",
     "zod",
-    "json-schema",
-    "contract-first"
+    "json-schema"
   ],
   "author": "Nwankwo Samuel",
   "license": "MIT",
@@ -39,9 +38,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "zod": "^4.4.3",
-    "zod-to-json-schema": "^3.25.2",
-    "ajv": "^8.20.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "vitest": "^2.1.5"
