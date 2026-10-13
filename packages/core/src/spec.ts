@@ -1,7 +1,5 @@
 export type Direction =
-  | 'client_to_server'
-  | 'server_to_client'
-  | 'bidirectional';
+  'client_to_server' | 'server_to_client' | 'bidirectional';
 
 export type EventKind = 'fire_and_forget' | 'request_response';
 

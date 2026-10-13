@@ -45,12 +45,8 @@ A `SocketDocsSpec` looks like:
           "kind": "request_response", // fire_and_forget | request_response (optional)
           "source": "declared", // sniffed | declared | decorator
           "summary": "Send a message to a room",
-          "payloadSchema": {
-            /* JSON Schema */
-          },
-          "responseSchema": {
-            /* JSON Schema, ack payload */
-          },
+          "payloadSchema": {/* JSON Schema */},
+          "responseSchema": {/* JSON Schema, ack payload */},
           "errors": [
             { "code": "INVALID_ROOM", "description": "Room does not exist" },
           ],

@@ -178,8 +178,7 @@ function collectWrappers(app: INestApplication): any[] {
   let modules: ModulesContainer | undefined;
   try {
     modules = (app as any).get(ModulesContainer, { strict: false }) as
-      | ModulesContainer
-      | undefined;
+      ModulesContainer | undefined;
   } catch {
     modules = undefined;
   }

@@ -100,9 +100,7 @@ Base it on the **existing `generateSpec()` shape**, since the UI already consume
 
 ```ts
 export type Direction =
-  | 'client_to_server'
-  | 'server_to_client'
-  | 'bidirectional';
+  'client_to_server' | 'server_to_client' | 'bidirectional';
 export type EventKind = 'fire_and_forget' | 'request_response';
 export type EventSource = 'sniffed' | 'declared' | 'decorator';
 

@@ -38,9 +38,7 @@ All types live in `packages/core/src/contract.ts`.
 
 ```ts
 export type Direction =
-  | 'client_to_server'
-  | 'server_to_client'
-  | 'bidirectional';
+  'client_to_server' | 'server_to_client' | 'bidirectional';
 export type EventType = 'fire_and_forget' | 'request_response';
 
 export interface ErrorDefinition {
