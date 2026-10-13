@@ -2,6 +2,6 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/docs-server" }
+    { "path": "packages/ui" }
   ]
 }

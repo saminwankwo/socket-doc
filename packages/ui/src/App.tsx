@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { Book, Activity, Terminal, Shield, Settings, Send, Power, PowerOff, XCircle, CheckCircle2, Search, Moon, Sun } from 'lucide-react';
+import { Book, Activity, Terminal, Shield, Settings, Send, Power, PowerOff, XCircle, CheckCircle2, Search, Moon, Sun, RefreshCw } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 
 interface Spec {
   specVersion: string;
   info: {
-    name: string;
+    title: string;
     version: string;
-    description: string;
+    description?: string;
   };
+  servers?: Array<{ url: string; label?: string }>;
+  socketPath?: string;
   namespaces: Record<string, {
     name: string;
     events: Record<string, any>;
@@ -24,7 +26,7 @@ const App = () => {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Playground state
-  const [socketUrl, setSocketUrl] = useState('http://localhost:3000');
+  const [socketUrl, setSocketUrl] = useState(typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
   const [authType, setAuthType] = useState<'none' | 'bearer' | 'apiKey'>('none');
   const [authToken, setAuthToken] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -42,13 +44,13 @@ const App = () => {
     }
   }, [theme]);
 
-  useEffect(() => {
-    // Fetch from relative schema.json (served by the server middleware)
-    fetch('./schema.json')
+  const loadSpec = () => {
+    setLoading(true);
+    fetch('./spec.json')
       .then(res => res.json())
       .then(data => {
         setSpec(data);
-        if (Object.keys(data.namespaces).length > 0) {
+        if (data.namespaces && Object.keys(data.namespaces).length > 0) {
           const firstNs = Object.keys(data.namespaces)[0];
           setSelectedNamespace(firstNs);
           const firstEvent = Object.keys(data.namespaces[firstNs].events)[0];
@@ -60,6 +62,10 @@ const App = () => {
         console.error('Failed to fetch spec:', err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadSpec();
   }, []);
 
   useEffect(() => {
@@ -76,8 +82,12 @@ const App = () => {
       auth.apiKey = authToken;
     }
 
-    const newSocket = io(socketUrl, {
-      path: selectedNamespace === 'default' ? '/socket.io' : `/${selectedNamespace}`,
+    const nsPath = (selectedNamespace && selectedNamespace !== '/' && selectedNamespace !== 'default')
+      ? `/${selectedNamespace.replace(/^\//, '')}`
+      : '';
+
+    const newSocket = io(`${socketUrl}${nsPath}`, {
+      path: spec?.socketPath ?? '/socket.io',
       auth
     });
 
@@ -243,7 +253,7 @@ const App = () => {
           theme === 'dark' ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-white/80'
         } backdrop-blur-md flex items-center justify-between px-8 sticky top-0 z-10`}>
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-slate-400">{spec.info.name}</span>
+            <span className="text-slate-400">{spec.info.title}</span>
             <span className="text-slate-600">/</span>
             <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
               {activeTab === 'docs' ? 'Documentation' : 'Playground'}
@@ -251,6 +261,13 @@ const App = () => {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-xs bg-slate-800 dark:bg-slate-800 bg-slate-200 px-2 py-1 rounded text-slate-500 dark:text-slate-400 font-mono">v{spec.info.version}</span>
+            <button
+              onClick={loadSpec}
+              title="Refresh spec"
+              className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+            >
+              <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            </button>
             <button 
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -267,9 +284,27 @@ const App = () => {
           {activeTab === 'docs' ? (
             <div className="space-y-12">
               <section>
-                <h1 className={`text-4xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{spec.info.name}</h1>
+                <h1 className={`text-4xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{spec.info.title}</h1>
                 <p className={`text-xl leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{spec.info.description}</p>
               </section>
+
+              {Object.keys(spec.namespaces).length === 0 || Object.values(spec.namespaces).every(ns => !ns.events || Object.keys(ns.events).length === 0) ? (
+                <div className={`text-center py-20 rounded-xl border-2 border-dashed ${
+                  theme === 'dark' ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-slate-50'
+                }`}>
+                  <Book size={48} className={`mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-slate-300'}`} />
+                  <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>No events documented yet</h3>
+                  <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-500'}`}>
+                    SocketDocs will auto-discover events as your server handles them, or you can declare them explicitly.
+                  </p>
+                  <button
+                    onClick={loadSpec}
+                    className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              ) : null}
 
               {selectedNamespace && (
                 <div className="space-y-8">
@@ -303,12 +338,21 @@ const App = () => {
                               <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
                                 theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
                               }`}>
-                                {event.type.replace(/_/g, ' ')}
+                                {event.kind ? event.kind.replace(/_/g, ' ') : 'event'}
                               </span>
                               {event.authRequired && (
                                 <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/10 text-amber-400">
                                   <Shield size={10} />
                                   Auth Required
+                                </span>
+                              )}
+                              {event.source && (
+                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+                                  event.source === 'declared' || event.source === 'decorator'
+                                    ? 'bg-teal-500/10 text-teal-400'
+                                    : 'bg-slate-500/10 text-slate-400'
+                                }`}>
+                                  {event.source === 'sniffed' ? 'auto-discovered' : 'documented'}
                                 </span>
                               )}
                             </div>
