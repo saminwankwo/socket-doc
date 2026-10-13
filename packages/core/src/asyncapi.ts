@@ -1,154 +1,159 @@
-export function convertToAsyncApi(spec: any): any {
-  const asyncApi: any = {
-    asyncapi: "3.0.0", // Use latest AsyncAPI version
+import type { SocketDocsSpec } from './spec.js';
+
+export function toAsyncApi(spec: SocketDocsSpec): Record<string, unknown> {
+  const asyncApi: Record<string, unknown> = {
+    asyncapi: '3.0.0',
     info: {
-      title: spec.info.name,
+      title: spec.info.title,
       version: spec.info.version,
-      description: spec.info.description
+      description: spec.info.description,
     },
-    servers: {
-      development: {
-        host: "localhost:{port}",
-        protocol: "ws",
-        description: "Development server",
-        variables: {
-          port: {
-            default: "3000",
-            description: "Port number"
-          }
-        }
-      }
-    },
+    servers: {},
     channels: {},
     components: {
       messages: {},
-      schemas: {}
+      schemas: {},
+    },
+  };
+
+  if (spec.servers && spec.servers.length > 0) {
+    const servers: Record<string, unknown> = {};
+    for (const s of spec.servers) {
+      const key = s.label || s.url.replace(/[^a-zA-Z0-9]/g, '_') || 'server';
+      servers[key] = {
+        host: s.url,
+        protocol: 'ws',
+      };
     }
+    asyncApi.servers = servers;
+  } else {
+    asyncApi.servers = {
+      development: {
+        host: 'localhost:3000',
+        protocol: 'ws',
+        description: 'Development server',
+      },
+    };
   }
 
-  // Add security schemes if present
   if (spec.security && spec.security.length > 0) {
-    asyncApi.components.securitySchemes = {}
-    asyncApi.security = []
-    
+    const securitySchemes: Record<string, unknown> = {};
+    const security: Array<Record<string, unknown[]>> = [];
+
     for (const sec of spec.security) {
-      if (sec.type === "apiKey") {
-        asyncApi.components.securitySchemes[sec.name] = {
-          type: "apiKey",
-          in: sec.in || "header",
-          description: sec.description
-        }
-      } else if (sec.type === "http") {
-        asyncApi.components.securitySchemes[sec.name] = {
-          type: "http",
-          scheme: "bearer",
-          description: sec.description
-        }
-      } else if (sec.type === "oauth2") {
-        asyncApi.components.securitySchemes[sec.name] = {
-          type: "oauth2",
+      if (sec.type === 'apiKey') {
+        securitySchemes[sec.name] = {
+          type: 'apiKey',
+          in: sec.in || 'header',
           description: sec.description,
-          flows: {} // Basic placeholder
-        }
+        };
+      } else if (sec.type === 'http') {
+        securitySchemes[sec.name] = {
+          type: 'http',
+          scheme: 'bearer',
+          description: sec.description,
+        };
+      } else if (sec.type === 'oauth2') {
+        securitySchemes[sec.name] = {
+          type: 'oauth2',
+          description: sec.description,
+          flows: {},
+        };
       }
-      asyncApi.security.push({ [sec.name]: [] })
+      security.push({ [sec.name]: [] });
     }
+
+    (asyncApi.components as Record<string, unknown>).securitySchemes =
+      securitySchemes;
+    asyncApi.security = security;
   }
 
-  // Process each namespace
-  for (const [nsName, ns] of Object.entries(spec.namespaces) as [string, any]) {
-    const channelName = nsName === "default" ? "/" : `/${nsName}`
-    
-    asyncApi.channels[channelName] = {
-      address: channelName,
-      messages: {}
-    }
+  for (const [nsName, ns] of Object.entries(spec.namespaces)) {
+    const channelName = nsName === 'default' ? '/' : nsName;
 
-    // Process each event in the namespace
-    for (const [evtName, evt] of Object.entries(ns.events) as [string, any]) {
-      const messageKey = `${nsName}_${evtName}`
-      
-      const message: any = {
+    const channel: Record<string, unknown> = {
+      address: channelName,
+      messages: {},
+    };
+
+    const sendMessages: Array<Record<string, string>> = [];
+    const receiveMessages: Array<Record<string, string>> = [];
+
+    for (const [evtName, evt] of Object.entries(ns.events)) {
+      const messageKey = `${nsName.replace(/[^a-zA-Z0-9]/g, '_')}_${evtName}`;
+
+      const message: Record<string, unknown> = {
         name: evtName,
         title: evt.summary || evtName,
         summary: evt.summary,
         description: evt.description,
-        payload: evt.payloadSchema || { type: "object" }
+        payload: evt.payloadSchema || { type: 'object' },
+      };
+
+      if (evt.responseSchema) {
+        message['x-response'] = evt.responseSchema;
       }
 
-      // Add examples if present
+      if (evt.errors && evt.errors.length > 0) {
+        message['x-errors'] = evt.errors;
+      }
+
       if (evt.examples && evt.examples.length > 0) {
-        message.examples = evt.examples.map((ex: any, i: number) => ({
+        message.examples = evt.examples.map((ex, i) => ({
           name: `example-${i}`,
-          payload: ex
-        }))
+          payload: ex,
+        }));
       }
 
-      asyncApi.components.messages[messageKey] = message
+      (asyncApi.components as Record<string, Record<string, unknown>>).messages[
+        messageKey
+      ] = message;
 
-      // Add to channel messages based on direction
-      const channel = asyncApi.channels[channelName]
-      
-      if (evt.direction === "client_to_server" || evt.direction === "bidirectional") {
-        channel.messages[messageKey] = {
-          $ref: `#/components/messages/${messageKey}`
-        }
+      if (
+        evt.direction === 'client_to_server' ||
+        evt.direction === 'bidirectional'
+      ) {
+        (channel.messages as Record<string, unknown>)[messageKey] = {
+          $ref: `#/components/messages/${messageKey}`,
+        };
+        sendMessages.push({ $ref: `#/components/messages/${messageKey}` });
       }
 
-      if (evt.direction === "server_to_client" || evt.direction === "bidirectional") {
-        // For bidirectional, we can add it as both or just handle it in operations
-        channel.messages[messageKey] = {
-          $ref: `#/components/messages/${messageKey}`
-        }
-      }
-    }
-
-    // Define operations for the channel
-    const hasClientToServer = Object.values(ns.events).some(
-      (e: any) => e.direction === "client_to_server" || e.direction === "bidirectional"
-    )
-    const hasServerToClient = Object.values(ns.events).some(
-      (e: any) => e.direction === "server_to_client" || e.direction === "bidirectional"
-    )
-
-    if (hasClientToServer) {
-      asyncApi.channels[channelName].operations = {
-        ...asyncApi.channels[channelName].operations,
-        [`sendMessageTo${nsName}`]: {
-          action: "send",
-          channel: {
-            $ref: `#/channels/${encodeURIComponent(channelName)}`
-          },
-          messages: Object.entries(ns.events)
-            .filter(([_, e]: [string, any]) => 
-              e.direction === "client_to_server" || e.direction === "bidirectional"
-            )
-            .map(([evtName, _]: [string, any]) => ({
-              $ref: `#/components/messages/${nsName}_${evtName}`
-            }))
-        }
+      if (
+        evt.direction === 'server_to_client' ||
+        evt.direction === 'bidirectional'
+      ) {
+        (channel.messages as Record<string, unknown>)[messageKey] = {
+          $ref: `#/components/messages/${messageKey}`,
+        };
+        receiveMessages.push({ $ref: `#/components/messages/${messageKey}` });
       }
     }
 
-    if (hasServerToClient) {
-      asyncApi.channels[channelName].operations = {
-        ...asyncApi.channels[channelName].operations,
-        [`receiveMessageFrom${nsName}`]: {
-          action: "receive",
-          channel: {
-            $ref: `#/channels/${encodeURIComponent(channelName)}`
-          },
-          messages: Object.entries(ns.events)
-            .filter(([_, e]: [string, any]) => 
-              e.direction === "server_to_client" || e.direction === "bidirectional"
-            )
-            .map(([evtName, _]: [string, any]) => ({
-              $ref: `#/components/messages/${nsName}_${evtName}`
-            }))
-        }
-      }
+    if (sendMessages.length > 0) {
+      channel.operations = {
+        ...(channel.operations as Record<string, unknown> | undefined),
+        send: {
+          action: 'send',
+          channel: { $ref: `#/channels/${encodeURIComponent(channelName)}` },
+          messages: sendMessages,
+        },
+      };
     }
+
+    if (receiveMessages.length > 0) {
+      channel.operations = {
+        ...(channel.operations as Record<string, unknown> | undefined),
+        receive: {
+          action: 'receive',
+          channel: { $ref: `#/channels/${encodeURIComponent(channelName)}` },
+          messages: receiveMessages,
+        },
+      };
+    }
+
+    (asyncApi.channels as Record<string, unknown>)[channelName] = channel;
   }
 
-  return asyncApi
+  return asyncApi;
 }

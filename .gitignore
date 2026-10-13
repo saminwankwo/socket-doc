@@ -1,10 +1,32 @@
+# dependencies
+node_modules
+
+# build output
+dist
+packages/express/ui-dist/
+packages/ui/dist/
+*.tsbuildinfo
+# compiled next to vite.config.ts by tsconfig.node.json
+packages/ui/vite.config.js
+packages/ui/vite.config.d.ts
+
+# test & tooling artifacts
+coverage
+packages/ui/e2e/shots/
+packages/ui/test-results/
+
+# env files (never commit secrets)
+.env*
+
+# os/editor files
+.DS_Store
+.idea/
+*.swp
+
+# local-only files & scratch
 docs
 old
-
-node_modules*
-dist
-package-lock.json*
-
-.DS_Store*
 private
+build.md
+README1.md
 SOCKETDOCS_IMPROVEMENTS.md

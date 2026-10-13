@@ -1,0 +1,16 @@
+{
+  "name": "socketdocs-example-express-chat",
+  "private": true,
+  "version": "1.0.0-alpha.0",
+  "type": "module",
+  "description": "Express + Socket.IO chat server demonstrating SocketDocs auto-discovery, declarations and handshake auth.",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@socketdocs/express": "1.0.0-alpha.0",
+    "express": "^4.22.2",
+    "socket.io": "^4.8.3",
+    "zod": "^4.4.3"
+  }
+}

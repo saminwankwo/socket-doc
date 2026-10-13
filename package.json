@@ -1,18 +1,17 @@
 {
   "name": "socketdocs",
+  "version": "1.0.0-alpha.0",
   "private": true,
-  "version": "0.3.0",
-  "description": "OpenAPI-style documentation framework for WebSocket APIs",
+  "description": "Swagger-style documentation for Socket.IO",
   "keywords": [
     "websocket",
-    "openapi",
+    "socket.io",
     "documentation",
-    "validation",
+    "openapi",
+    "swagger",
     "zod",
     "json-schema",
     "realtime",
-    "socket.io",
-    "fastify",
     "nestjs",
     "typescript"
   ],
@@ -20,35 +19,42 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/saminwankwo/socketdocs.git"
+    "url": "git+https://github.com/saminwankwo/socket-doc.git"
   },
+  "homepage": "https://github.com/saminwankwo/socket-doc#readme",
   "bugs": {
-    "url": "https://github.com/saminwankwo/socketdocs/issues"
+    "url": "https://github.com/saminwankwo/socket-doc/issues"
   },
-  "homepage": "https://github.com/saminwankwo/socketdocs#readme",
-  "workspaces": [
-    "packages/*",
-    "examples/*"
-  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "clean": "rm -rf packages/*/dist && rm -rf packages/*/tsconfig.tsbuildinfo",
-    "build": "npm run clean && tsc -b",
-    "build:docs": "cd packages/docs-server && npm run build || true",
+    "clean": "rm -rf packages/*/dist packages/*/tsconfig.tsbuildinfo packages/ui/tsconfig.node.tsbuildinfo packages/ui/vite.config.js packages/ui/vite.config.d.ts",
+    "build": "npm run clean && npm run build:ui && tsc -b && npm run copy:express-ui",
+    "build:ui": "cd packages/ui && npm run build",
+    "copy:express-ui": "cd packages/express && npm run copy:ui",
     "test": "npm test --workspaces --if-present",
+    "check:examples": "node scripts/check-examples.mjs",
     "lint": "eslint .",
-    "format": "prettier --write \"**/*.{ts,js,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md}\"",
+    "check:circular": "madge --circular --extensions ts,tsx packages/*/src"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/jest": "^30.0.0",
     "@types/node": "^25.9.2",
     "@typescript-eslint/eslint-plugin": "^8.60.1",
     "@typescript-eslint/parser": "^8.60.1",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
-    "jest": "^30.4.2",
+    "knip": "^6.41.0",
+    "madge": "^5.0.2",
     "prettier": "^3.8.3",
-    "ts-jest": "^29.4.1",
+    "socket.io-client": "^4.8.3",
     "typescript": "^6.0.3"
-  }
+  },
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md}\""
 }

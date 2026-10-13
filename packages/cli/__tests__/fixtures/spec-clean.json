@@ -1,0 +1,35 @@
+{
+  "specVersion": "1.0",
+  "info": {
+    "title": "Clean API",
+    "version": "1.0.0",
+    "description": "A spec with no lint errors."
+  },
+  "servers": [{ "url": "http://localhost:3000", "label": "Local" }],
+  "socketPath": "/socket.io",
+  "namespaces": {
+    "/chat": {
+      "name": "/chat",
+      "events": {
+        "send_message": {
+          "name": "send_message",
+          "namespace": "/chat",
+          "direction": "client_to_server",
+          "kind": "request_response",
+          "source": "declared",
+          "summary": "Send a message to a room",
+          "payloadSchema": { "type": "object" },
+          "responseSchema": { "type": "object" }
+        },
+        "new_message": {
+          "name": "new_message",
+          "namespace": "/chat",
+          "direction": "server_to_client",
+          "source": "sniffed",
+          "summary": "Broadcast message",
+          "payloadSchema": { "type": "object" }
+        }
+      }
+    }
+  }
+}

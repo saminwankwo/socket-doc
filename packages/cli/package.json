@@ -1,42 +1,61 @@
 {
   "name": "@socketdocs/cli",
-  "version": "0.3.0",
-  "type": "module",
-  "description": "Command-line interface for SocketDocs to initialize, generate, and serve documentation.",
+  "version": "1.0.0-alpha.0",
+  "description": "Minimal CLI for SocketDocs: lint a spec and export it to AsyncAPI.",
   "keywords": [
     "socketdocs",
     "cli",
-    "documentation",
-    "generator",
-    "sdk-generator"
+    "socket.io",
+    "asyncapi",
+    "lint",
+    "swagger"
   ],
   "author": "Nwankwo Samuel",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/saminwankwo/socketdocs.git",
+    "url": "git+https://github.com/saminwankwo/socket-doc.git",
     "directory": "packages/cli"
   },
+  "homepage": "https://github.com/saminwankwo/socket-doc#readme",
+  "bugs": {
+    "url": "https://github.com/saminwankwo/socket-doc/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "bin": {
-    "socketdocs": "dist/index.js"
+    "socketdocs": "./dist/bin.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
-  "publishConfig": {
-    "access": "public"
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
-    "@faker-js/faker": "^10.4.0",
-    "@socketdocs/core": "^0.3.0",
-    "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1",
-    "commander": "^15.0.0",
-    "jiti": "^2.7.0",
-    "socket.io": "^4.8.3",
-    "ts-node": "^10.9.2"
+    "@socketdocs/core": "1.0.0-alpha.0"
   },
-  "scripts": {
-    "build": "tsc -p tsconfig.json"
+  "devDependencies": {
+    "vitest": "^2.1.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

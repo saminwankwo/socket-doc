@@ -1,614 +1,287 @@
-#!/usr/bin/env node
-import fs from "fs"
-import path from "path"
-import http from "http"
-import { Command } from "commander"
-import AjvModule from "ajv"
-import addFormatsModule from "ajv-formats"
-import { faker } from "@faker-js/faker"
-import { Server } from "socket.io"
-import { TypescriptGenerator } from "./generators/typescript.js"
-import { GoGenerator } from "./generators/go.js"
-import { PythonGenerator } from "./generators/python.js"
-import { PhpGenerator } from "./generators/php.js"
-import { SdkGenerator } from "./generators/index.js"
-import { generateHtml, lintSpec, convertToAsyncApi, LintIssue } from "@socketdocs/core"
-import jiti from "jiti"
+import {
+  lintSpec,
+  toAsyncApi,
+  type LintIssue,
+  type SocketDocsSpec,
+} from '@socketdocs/core';
+import { readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const Ajv = (AjvModule as any).default || AjvModule
-const addFormats = (addFormatsModule as any).default || addFormatsModule
+export const EXIT_OK = 0;
+export const EXIT_FAILURE = 1;
+export const EXIT_USAGE = 2;
 
-const ajv = new Ajv()
-addFormats(ajv)
+export interface CliIO {
+  out: (line: string) => void;
+  err: (line: string) => void;
+}
 
-const program = new Command()
+const DEFAULT_IO: CliIO = {
+  out: (line) => process.stdout.write(`${line}\n`),
+  err: (line) => process.stderr.write(`${line}\n`),
+};
 
-/**
- * Generate mock data from a JSON schema
- */
-function generateMockData(schema: any): any {
-  if (!schema) return undefined
+export interface SpecSource {
+  /** Fetch the spec from a live server, e.g. http://localhost:3000/socket-docs/spec.json */
+  url?: string;
+  /** Read the spec from a local JSON file. */
+  file?: string;
+}
 
-  switch (schema.type) {
-    case "string": {
-      if (schema.format === "email") return faker.internet.email()
-      if (schema.format === "uri") return faker.internet.url()
-      if (schema.format === "uuid") return faker.string.uuid()
-      if (schema.format === "date-time") return faker.date.anytime().toISOString()
-      if (schema.enum && schema.enum.length > 0) {
-        return faker.helpers.arrayElement(schema.enum)
-      }
-      if (schema.pattern) {
-        // Simple fallback for patterns
-        return faker.string.alphanumeric(10)
-      }
-      const minLength = schema.minLength || 5
-      const maxLength = schema.maxLength || 20
-      return faker.lorem.words(
-        Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength
-      )
-    }
+export function usage(): string {
+  return [
+    'socketdocs — Swagger-style documentation for Socket.IO',
+    '',
+    'Usage:',
+    '  socketdocs lint           (--url <url> | --file <path>)',
+    '  socketdocs export-asyncapi (--url <url> | --file <path>) [-o <file>]',
+    '  socketdocs --version',
+    '',
+    'Commands:',
+    '  lint             Lint a SocketDocs spec. Exits 1 if there are errors.',
+    '  export-asyncapi  Convert the spec to an AsyncAPI 3.0 document.',
+    '                   Written to --output when given, otherwise printed.',
+    '',
+    'Options:',
+    '  --url <url>      Load the spec from a live server (e.g. .../spec.json).',
+    '  --file <path>    Load the spec from a local JSON file.',
+    '  -o, --output <path>  Write the AsyncAPI document to a file.',
+    '  -h, --help       Show this help.',
+    '  -V, --version    Print the version.',
+  ].join('\n');
+}
 
-    case "number":
-    case "integer": {
-      const min = schema.minimum || 0
-      const max = schema.maximum || 100
-      const num = faker.number.int({ min, max })
-      return schema.type === "integer" ? Math.floor(num) : num
-    }
-
-    case "boolean":
-      return faker.datatype.boolean()
-
-    case "array": {
-      const minItems = schema.minItems || 1
-      const maxItems = schema.maxItems || 5
-      const items = []
-      const count = faker.number.int({ min: minItems, max: maxItems })
-      for (let i = 0; i < count; i++) {
-        items.push(generateMockData(schema.items))
-      }
-      return items
-    }
-
-    case "object": {
-      const obj: any = {}
-      const required = schema.required || []
-      const properties = schema.properties || {}
-      
-      // Include required properties
-      for (const key of required) {
-        if (properties[key]) {
-          obj[key] = generateMockData(properties[key])
-        }
-      }
-      
-      // Include some optional properties
-      const optionalKeys = Object.keys(properties).filter(k => !required.includes(k))
-      const numOptional = Math.min(
-        optionalKeys.length,
-        faker.number.int({ min: 0, max: optionalKeys.length })
-      )
-      const selectedOptional = faker.helpers.arrayElements(optionalKeys, numOptional)
-      for (const key of selectedOptional) {
-        obj[key] = generateMockData(properties[key])
-      }
-      
-      return obj
-    }
-
-    case "null":
-      return null
-
-    default:
-      // If no type specified or it's a union, try to generate something reasonable
-      if (schema.oneOf && schema.oneOf.length > 0) {
-        return generateMockData(faker.helpers.arrayElement(schema.oneOf))
-      }
-      if (schema.anyOf && schema.anyOf.length > 0) {
-        return generateMockData(faker.helpers.arrayElement(schema.anyOf))
-      }
-      return faker.lorem.word()
+export async function readVersion(): Promise<string> {
+  const packageJsonPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '../package.json',
+  );
+  try {
+    const raw = await readFile(packageJsonPath, 'utf8');
+    return (JSON.parse(raw) as { version?: string }).version ?? 'unknown';
+  } catch {
+    return 'unknown';
   }
 }
 
-program
-  .name("socketdocs")
-  .description("CLI for SocketDocs")
-  .version("1.0.0")
+/**
+ * Loads and validates a SocketDocs spec. Returns `undefined` (after reporting
+ * the problem) when the spec cannot be loaded or is not a spec at all.
+ */
+export async function loadSpec(
+  source: SpecSource,
+  io: CliIO = DEFAULT_IO,
+): Promise<SocketDocsSpec | undefined> {
+  let raw: string;
 
-program
-  .command("init")
-  .description("Initialize SocketDocs configuration")
-  .action(() => {
-    const config = {
-      name: "my-realtime-api",
-      version: "1.0.0",
-      contractFile: "./socketdocs.contract.ts",
-      outputFile: "./wsdoc.json"
-    }
-    fs.writeFileSync("socketdocs.config.json", JSON.stringify(config, null, 2))
-    
-    // Create a sample contract file if it doesn't exist
-    if (!fs.existsSync("socketdocs.contract.ts")) {
-      const sampleContract = `import { createContract } from "@socketdocs/core"
-import { z } from "zod"
-
-export const contract = createContract({
-  name: "my-realtime-api",
-  version: "1.0.0",
-  description: "My awesome realtime API"
-})
-
-const chat = contract.namespace("chat")
-
-chat.event({
-  name: "ping",
-  direction: "client_to_server",
-  payload: z.object({
-    message: z.string().optional()
-  })
-})
-`
-      fs.writeFileSync("socketdocs.contract.ts", sampleContract)
-    }
-
-    console.log("Created socketdocs.config.json and socketdocs.contract.ts")
-  })
-
-program
-  .command("generate-spec")
-  .description("Generate documentation from contract")
-  .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
-  .action(async (options: any) => {
-    const configPath = path.resolve(process.cwd(), options.config)
-    if (!fs.existsSync(configPath)) {
-      console.error(`Config file not found at ${configPath}`)
-      process.exit(1)
-    }
-
-    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
-    const contractFilePath = path.resolve(process.cwd(), config.contractFile)
-
-    if (!fs.existsSync(contractFilePath)) {
-      // Try with .js if .ts not found
-      const jsPath = contractFilePath.replace(/\.ts$/, ".js")
-      if (!fs.existsSync(jsPath)) {
-        console.error(`Contract file not found at ${contractFilePath} (or .js)`)
-        process.exit(1)
-      }
-    }
-
-    console.log(`Reading contract from ${contractFilePath}...`)
-    
+  if (source.url) {
     try {
-      const load = jiti(import.meta.url, { interopDefault: true })
-      const contract = load(contractFilePath)
-      
-      if (!contract || typeof contract.generateSpec !== "function") {
-        throw new Error("Contract file must export a 'contract' object created with createContract()")
+      const response = await fetch(source.url);
+      if (!response.ok) {
+        io.err(
+          `Failed to fetch ${source.url}: HTTP ${response.status} ${response.statusText}`,
+        );
+        return undefined;
       }
-
-      const spec = contract.generateSpec()
-      fs.writeFileSync(config.outputFile, JSON.stringify(spec, null, 2))
-      console.log(`Generated ${config.outputFile}`)
-    } catch (err) {
-      console.error("Error generating spec:", err)
-      process.exit(1)
+      raw = await response.text();
+    } catch (error) {
+      io.err(`Failed to fetch ${source.url}: ${(error as Error).message}`);
+      return undefined;
     }
-  })
-
-program
-  .command("serve-docs")
-  .description("Serve documentation locally")
-  .option("-p, --port <number>", "Port to serve on", "4000")
-  .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
-  .action((options: any) => {
-    const specPath = path.resolve(process.cwd(), options.spec)
-    if (!fs.existsSync(specPath)) {
-      console.error(`Spec file not found at ${specPath}`)
-      process.exit(1)
-    }
-
-    const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
-    
-    const startServer = (port: number) => {
-      const server = http.createServer((req, res) => {
-        // CORS
-        res.setHeader("Access-Control-Allow-Origin", "*")
-        res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
-        res.setHeader("Access-Control-Allow-Headers", "Content-Type")
-        
-        if (req.method === "OPTIONS") {
-          res.end()
-          return
-        }
-
-        if (req.url === "/api/spec") {
-          res.setHeader("Content-Type", "application/json")
-          res.end(JSON.stringify(spec, null, 2))
-          return
-        }
-
-        res.setHeader("Content-Type", "text/html")
-        res.end(generateHtml(spec))
-      })
-
-      server.on("error", (err: any) => {
-        if (err.code === "EADDRINUSE") {
-          console.log(`Port ${port} is in use, trying ${port + 1}...`)
-          startServer(port + 1)
-        } else {
-          console.error("Server error:", err)
-        }
-      })
-
-      server.listen(port, () => {
-        console.log(`SocketDocs Spec Server running at http://localhost:${port}`)
-      })
-    }
-
-    startServer(parseInt(options.port))
-  })
-
-program
-  .command("generate-sdk")
-  .description("Generate client SDK")
-  .option("-l, --lang <type>", "SDK language (ts|js|go|py)", "ts")
-  .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
-  .option("-o, --output <path>", "Output file path", "./socketdocs-sdk")
-  .action((options: any) => {
-    const specPath = path.resolve(process.cwd(), options.spec)
-    if (!fs.existsSync(specPath)) {
-      console.error(`Spec file not found at ${specPath}`)
-      process.exit(1)
-    }
-
-    const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
-    
-    const generators: Record<string, SdkGenerator> = {
-      ts: new TypescriptGenerator('ts'),
-      js: new TypescriptGenerator('js'),
-      go: new GoGenerator(),
-      py: new PythonGenerator(),
-      php: new PhpGenerator()
-    }
-
-    const generator = generators[options.lang]
-    if (!generator) {
-      console.error(`SDK generation for ${options.lang} is not yet implemented.`)
-      process.exit(1)
-    }
-
-    const sdkCode = generator.generate(spec)
-    const ext = generator.getFileExtension()
-    const outputPath = options.output.endsWith(ext) ? options.output : options.output + ext
-    
-    fs.writeFileSync(outputPath, sdkCode)
-    console.log(`${options.lang.toUpperCase()} SDK generated at ${outputPath}`)
-  })
-
-program
-  .command("validate-contract")
-  .description("Validate contract at runtime")
-  .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
-  .action(async (options) => {
-    console.log("🔍 Validating contract...")
-    const configPath = path.resolve(process.cwd(), options.config)
-    
-    if (!fs.existsSync(configPath)) {
-      console.error(`❌ Config file not found at ${configPath}`)
-      process.exit(1)
-    }
-
-    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
-    const contractFilePath = path.resolve(process.cwd(), config.contractFile)
-    
+  } else if (source.file) {
     try {
-      const load = jiti(import.meta.url, { interopDefault: true })
-      const contract = load(contractFilePath)
-      
-      if (!contract) {
-        throw new Error("Contract not found - make sure your contract file exports the contract object")
-      }
+      raw = await readFile(source.file, 'utf8');
+    } catch (error) {
+      io.err(`Failed to read ${source.file}: ${(error as Error).message}`);
+      return undefined;
+    }
+  } else {
+    io.err('No spec source given: use --url <url> or --file <path>.');
+    io.err(usage());
+    return undefined;
+  }
 
-      const issues: { type: "error" | "warning"; message: string; path?: string }[] = []
-      
-      // Validate contract structure
-      if (typeof contract !== "object") {
-        issues.push({ type: "error", message: "Contract must be an object" })
-      }
-      
-      if (!contract._namespaces) {
-        issues.push({ type: "error", message: "Contract is missing _namespaces property" })
-      } else if (!(contract._namespaces instanceof Map)) {
-        issues.push({ type: "error", message: "_namespaces must be a Map object" })
-      }
-      
-      if (typeof contract.generateSpec !== "function") {
-        issues.push({ type: "error", message: "Contract is missing generateSpec method" })
-      }
-      
-      if (!contract.options) {
-        issues.push({ type: "warning", message: "Contract is missing options property" })
-      } else {
-        if (!contract.options.name) {
-          issues.push({ type: "warning", message: "Contract options.name is missing", path: "options.name" })
-        }
-        if (!contract.options.version) {
-          issues.push({ type: "warning", message: "Contract options.version is missing", path: "options.version" })
-        }
-      }
-      
-      // Validate namespaces
-      if (contract._namespaces) {
-        if (contract._namespaces.size === 0) {
-          issues.push({ type: "warning", message: "Contract has no namespaces defined" })
-        }
-        
-        for (const [nsName, ns] of contract._namespaces) {
-          if (!ns.events || typeof ns !== "object") {
-            issues.push({ type: "error", message: `Namespace ${nsName} is invalid`, path: `namespaces.${nsName}` })
-            continue
-          }
-          
-          if (!ns.events || !(ns.events instanceof Map)) {
-            issues.push({ type: "error", message: `Namespace ${nsName}.events must be a Map`, path: `namespaces.${nsName}.events` })
-            continue
-          }
-          
-          if (ns.events.size === 0) {
-            issues.push({ type: "warning", message: `Namespace ${nsName} has no events defined`, path: `namespaces.${nsName}` })
-          }
-          
-          // Validate events
-          for (const [evtName, evt] of ns.events) {
-            const evtPath = `namespaces.${nsName}.events.${evtName}`
-            
-            if (!evt.name || typeof evt !== "object") {
-              issues.push({ type: "error", message: `Event ${evtName} is invalid`, path: evtPath })
-              continue
-            }
-            
-            if (!evt.direction) {
-              issues.push({ type: "error", message: `Event ${evtName} is missing direction`, path: `${evtPath}.direction` })
-            } else if (!["client_to_server", "server_to_client", "bidirectional"].includes(evt.direction)) {
-              issues.push({ type: "error", message: `Event ${evtName} has invalid direction: ${evt.direction}`, path: `${evtPath}.direction` })
-            }
-            
-            if (evt.type && !["fire_and_forget", "request_response"].includes(evt.type)) {
-              issues.push({ type: "warning", message: `Event ${evtName} has invalid type: ${evt.type}`, path: `${evtPath}.type` })
-            }
-            
-            // Validate that request_response events have response schemas
-            if (evt.type === "request_response" && !evt.response && !evt.responseSchema) {
-              issues.push({ type: "warning", message: `Request-response event ${evtName} should have a response schema`, path: evtPath })
-            }
-            
-            // Validate errors
-            if (evt.errors) {
-              if (!Array.isArray(evt.errors)) {
-                issues.push({ type: "error", message: `Event ${evtName}.errors must be an array`, path: `${evtPath}.errors` })
-              } else {
-                for (let i = 0; i < evt.errors.length; i++) {
-                  const err = evt.errors[i]
-                  if (!err.code) {
-                    issues.push({ type: "error", message: `Error ${i} for event ${evtName} is missing code`, path: `${evtPath}.errors[${i}].code` })
-                  }
-                  if (!err.description) {
-                    issues.push({ type: "warning", message: `Error ${i} for event ${evtName} is missing description`, path: `${evtPath}.errors[${i}].description` })
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      
-      // Try to generate spec to ensure it works
-      try {
-        const spec = contract.generateSpec()
-        if (!spec) {
-          issues.push({ type: "error", message: "generateSpec returned null or undefined" })
-        } else {
-          console.log("✅ generateSpec works correctly")
-        }
-        // Also run the linter on the generated spec
-        const lintIssues = lintSpec(spec)
-        for (const issue of lintIssues) {
-          issues.push(issue)
-        }
-      } catch (err) {
-        issues.push({ type: "error", message: `generateSpec failed: ${(err as Error).message}` })
-      }
-      
-      // Report results
-      if (issues.length === 0) {
-        console.log("\n✅ Contract is valid!")
-        return
-      }
-      
-      console.log(`\nFound ${issues.length} issue(s):`)
-      let hasErrors = false
-      
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    const origin = source.url ?? source.file;
+    io.err(`${origin} is not valid JSON: ${(error as Error).message}`);
+    return undefined;
+  }
+
+  const candidate = parsed as { info?: unknown; namespaces?: unknown } | null;
+  if (
+    !candidate ||
+    typeof candidate !== 'object' ||
+    typeof candidate.info !== 'object' ||
+    candidate.info === null ||
+    typeof candidate.namespaces !== 'object' ||
+    candidate.namespaces === null
+  ) {
+    const origin = source.url ?? source.file;
+    io.err(
+      `${origin} is not a SocketDocs spec: expected an object with "info" and "namespaces".`,
+    );
+    return undefined;
+  }
+
+  return parsed as SocketDocsSpec;
+}
+
+export function formatIssue(issue: LintIssue): string {
+  const marker = issue.type === 'error' ? '✖ error  ' : '⚠ warning';
+  return `${marker} ${issue.message} (${issue.path})`;
+}
+
+export interface ParsedArgs {
+  command: string | undefined;
+  source: SpecSource;
+  output?: string;
+  help: boolean;
+  version: boolean;
+  error?: string;
+}
+
+export function parseArgs(argv: string[]): ParsedArgs {
+  const parsed: ParsedArgs = {
+    command: undefined,
+    source: {},
+    help: false,
+    version: false,
+  };
+  const positional: string[] = [];
+
+  const takeValue = (flag: string, index: number): string | undefined => {
+    const next = argv[index + 1];
+    if (next === undefined || next.startsWith('-')) {
+      parsed.error = `Missing value for ${flag}.`;
+      return undefined;
+    }
+    return next;
+  };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+
+    if (arg === '--url') {
+      const value = takeValue(arg, i);
+      if (value) parsed.source.url = value;
+      i++;
+    } else if (arg.startsWith('--url=')) {
+      parsed.source.url = arg.slice('--url='.length);
+    } else if (arg === '--file') {
+      const value = takeValue(arg, i);
+      if (value) parsed.source.file = value;
+      i++;
+    } else if (arg.startsWith('--file=')) {
+      parsed.source.file = arg.slice('--file='.length);
+    } else if (arg === '-o' || arg === '--output') {
+      const value = takeValue(arg, i);
+      if (value) parsed.output = value;
+      i++;
+    } else if (arg.startsWith('--output=')) {
+      parsed.output = arg.slice('--output='.length);
+    } else if (arg === '-h' || arg === '--help') {
+      parsed.help = true;
+    } else if (arg === '-V' || arg === '--version') {
+      parsed.version = true;
+    } else if (arg.startsWith('-')) {
+      parsed.error = `Unknown option: ${arg}`;
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  parsed.command = positional[0];
+  if (positional.length > 1) {
+    parsed.error = `Unexpected argument: ${positional[1]}`;
+  }
+
+  if (parsed.source.url && parsed.source.file) {
+    parsed.error = 'Use either --url or --file, not both.';
+  }
+
+  return parsed;
+}
+
+/**
+ * Runs the CLI and returns the process exit code:
+ * `0` success, `1` failure (lint errors, network/IO problems), `2` usage error.
+ */
+export async function runCli(
+  argv: string[],
+  io: CliIO = DEFAULT_IO,
+): Promise<number> {
+  const args = parseArgs(argv);
+
+  if (args.version) {
+    io.out(await readVersion());
+    return EXIT_OK;
+  }
+
+  if (args.help) {
+    io.out(usage());
+    return EXIT_OK;
+  }
+
+  if (!args.command && argv.length === 0) {
+    io.err(usage());
+    return EXIT_USAGE;
+  }
+
+  if (args.error) {
+    io.err(args.error);
+    io.err(usage());
+    return EXIT_USAGE;
+  }
+
+  switch (args.command) {
+    case 'lint': {
+      const spec = await loadSpec(args.source, io);
+      if (!spec) return EXIT_FAILURE;
+
+      const issues = lintSpec(spec);
       for (const issue of issues) {
-        const icon = issue.type === "error" ? "❌" : "⚠️"
-        console.log(`  ${icon} ${issue.message}${issue.path ? ` (${issue.path})` : ""}`)
-        if (issue.type === "error") hasErrors = true
+        io.out(formatIssue(issue));
       }
-      
-      if (hasErrors) {
-        process.exit(1)
-      }
-      
-    } catch (err) {
-      console.error("\n❌ Contract validation failed:", (err as Error).message)
-      process.exit(1)
-    }
-  })
 
-program
-  .command("mock-server")
-  .description("Start a mock WebSocket server based on the spec")
-  .option("-p, --port <number>", "Port to serve on", "5000")
-  .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
-  .action((options) => {
-    const specPath = path.resolve(process.cwd(), options.spec)
-    if (!fs.existsSync(specPath)) {
-      console.error(`Spec file not found at ${specPath}`)
-      process.exit(1)
+      const errors = issues.filter((issue) => issue.type === 'error').length;
+      const warnings = issues.length - errors;
+      if (errors > 0) {
+        io.err(`✖ ${errors} error(s), ${warnings} warning(s)`);
+        return EXIT_FAILURE;
+      }
+      io.out(`✓ no errors (${warnings} warning(s))`);
+      return EXIT_OK;
     }
 
-    const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
-    const port = parseInt(options.port)
-    console.log(`Starting mock server for ${spec.info.name} on port ${port}...`)
+    case 'export-asyncapi': {
+      const spec = await loadSpec(args.source, io);
+      if (!spec) return EXIT_FAILURE;
 
-    const httpServer = http.createServer()
-    const io = new Server(httpServer, {
-      cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-      }
-    })
+      const document = toAsyncApi(spec);
+      const json = `${JSON.stringify(document, null, 2)}\n`;
 
-    // Set up namespaces
-    for (const [nsName, ns] of Object.entries(spec.namespaces)) {
-      const namespace = nsName === "default" ? io : io.of(`/${nsName}`)
-      
-      console.log(`  Setting up namespace: /${nsName === "default" ? "" : nsName}`)
-      
-      namespace.on("connection", (socket) => {
-        console.log(`  [${nsName}] Client connected: ${socket.id}`)
-
-        // Listen to client-to-server and bidirectional events
-        for (const [evtName, evt] of Object.entries((ns as any).events)) {
-          const eventDef = evt as any
-          if (eventDef.direction === "client_to_server" || eventDef.direction === "bidirectional") {
-            console.log(`    Listening for event: ${evtName}`)
-            
-            socket.on(evtName, (payload, ack) => {
-              console.log(`  [${nsName}] Received event: ${evtName}`, payload)
-
-              // Validate payload if schema exists
-              if (eventDef.payloadSchema) {
-                const validate = ajv.compile(eventDef.payloadSchema)
-                const isValid = validate(payload)
-                if (!isValid) {
-                  console.error(`  [${nsName}] Invalid payload:`, validate.errors)
-                  if (ack) {
-                    ack({ status: "error", message: "Invalid payload", errors: validate.errors })
-                  }
-                  return
-                }
-              }
-
-              // Generate mock response if it's request-response
-              if (eventDef.type === "request_response" && eventDef.responseSchema) {
-                const mockResponse = generateMockData(eventDef.responseSchema)
-                console.log(`  [${nsName}] Sending mock response:`, mockResponse)
-                if (ack) {
-                  ack(mockResponse)
-                }
-              }
-
-              // Emit a corresponding server-to-client event if it exists
-              if (eventDef.direction === "bidirectional") {
-                const mockServerPayload = eventDef.payloadSchema 
-                  ? generateMockData(eventDef.payloadSchema) 
-                  : {}
-                console.log(`  [${nsName}] Emitting mock bidirectional response:`, mockServerPayload)
-                socket.emit(evtName, mockServerPayload)
-              }
-
-              // Emit random server-to-client events periodically
-              const serverEvents = Object.entries((ns as any).events).filter(
-                ([_, e]: [string, any]) => e.direction === "server_to_client"
-              )
-              if (serverEvents.length > 0) {
-                const randomDelay = faker.number.int({ min: 1000, max: 5000 })
-                setTimeout(() => {
-                  const [randomEventName, randomEvent] = faker.helpers.arrayElement(serverEvents)
-                  const mockEventData = (randomEvent as any).payloadSchema 
-                    ? generateMockData((randomEvent as any).payloadSchema) 
-                    : {}
-                  console.log(`  [${nsName}] Emitting mock server event: ${randomEventName}`, mockEventData)
-                  socket.emit(randomEventName, mockEventData)
-                }, randomDelay)
-              }
-            })
-          }
+      if (args.output) {
+        try {
+          await writeFile(args.output, json, 'utf8');
+        } catch (error) {
+          io.err(`Failed to write ${args.output}: ${(error as Error).message}`);
+          return EXIT_FAILURE;
         }
-
-        socket.on("disconnect", () => {
-          console.log(`  [${nsName}] Client disconnected: ${socket.id}`)
-        })
-      })
-    }
-
-    httpServer.listen(port, () => {
-      console.log(`\n✅ Mock server is running at http://localhost:${port}`)
-      console.log(`   Connect with Socket.IO client to start testing!`)
-    })
-  })
-
-program
-  .command("lint")
-  .description("Lint the contract for common mistakes and missing documentation")
-  .option("-c, --config <path>", "Path to config file", "./socketdocs.config.json")
-  .action(async (options: any) => {
-    const configPath = path.resolve(process.cwd(), options.config)
-    if (!fs.existsSync(configPath)) {
-      console.error(`Config file not found at ${configPath}`)
-      process.exit(1)
-    }
-
-    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
-    const contractFilePath = path.resolve(process.cwd(), config.contractFile)
-
-    try {
-      const load = jiti(import.meta.url, { interopDefault: true })
-      const contract = load(contractFilePath)
-      const spec = contract.generateSpec()
-      
-      const issues = lintSpec(spec)
-      
-      if (issues.length === 0) {
-        console.log("✅ No issues found in contract.")
-        return
+        io.out(`AsyncAPI document written to ${args.output}`);
+        return EXIT_OK;
       }
 
-      console.log(`Found ${issues.length} issues:`)
-      issues.forEach((issue: LintIssue) => {
-        const icon = issue.type === 'error' ? '❌' : '⚠️'
-        console.log(`${icon} [${issue.path}] ${issue.message}`)
-      })
-
-      if (issues.some((i: LintIssue) => i.type === 'error')) {
-        process.exit(1)
-      }
-    } catch (err) {
-      console.error("Error linting contract:", err)
-      process.exit(1)
-    }
-  })
-
-program
-  .command("export-asyncapi")
-  .description("Export the contract as an AsyncAPI specification")
-  .option("-s, --spec <path>", "Path to spec file", "./wsdoc.json")
-  .option("-o, --output <path>", "Output file path", "./asyncapi.json")
-  .action((options) => {
-    const specPath = path.resolve(process.cwd(), options.spec)
-    if (!fs.existsSync(specPath)) {
-      console.error(`Spec file not found at ${specPath}`)
-      process.exit(1)
+      io.out(json.trimEnd());
+      return EXIT_OK;
     }
 
-    const spec = JSON.parse(fs.readFileSync(specPath, "utf-8"))
-    const asyncApi = convertToAsyncApi(spec)
-    
-    fs.writeFileSync(options.output, JSON.stringify(asyncApi, null, 2))
-    console.log(`AsyncAPI specification exported to ${options.output}`)
-  })
-
-program.parse(process.argv)
+    default:
+      io.err(`Unknown command: ${args.command}`);
+      io.err(usage());
+      return EXIT_USAGE;
+  }
+}

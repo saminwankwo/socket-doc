@@ -1,0 +1,79 @@
+{
+  "name": "@socketdocs/express",
+  "version": "1.0.0-alpha.0",
+  "description": "Express middleware and Socket.IO instrumentation for SocketDocs.",
+  "keywords": [
+    "socketdocs",
+    "socket.io",
+    "express",
+    "swagger",
+    "documentation"
+  ],
+  "author": "Nwankwo Samuel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saminwankwo/socket-doc.git",
+    "directory": "packages/express"
+  },
+  "homepage": "https://github.com/saminwankwo/socket-doc#readme",
+  "bugs": {
+    "url": "https://github.com/saminwankwo/socket-doc/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "ui-dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "copy:ui": "node -e 'const fs=require(\"fs\"); const path=require(\"path\"); const src=path.resolve(\"../ui/dist\"); const dst=path.resolve(\"./ui-dist\"); if(fs.existsSync(src)){ fs.rmSync(dst, {recursive:true, force:true}); fs.cpSync(src, dst, {recursive:true}); console.log(\"Copied UI bundle to ui-dist\"); } else { console.warn(\"Warning: UI dist not found at \", src); }'",
+    "build": "tsc -p tsconfig.json && npm run copy:ui",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@socketdocs/core": "1.0.0-alpha.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "express": "^4.22.2",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "vitest": "^2.1.5",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "express": "^4.18.0 || ^5.0.0",
+    "socket.io": "^4.0.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": false
+    },
+    "socket.io": {
+      "optional": false
+    },
+    "zod": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

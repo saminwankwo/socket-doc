@@ -1,224 +1,273 @@
 # SocketDocs
 
-OpenAPI-style documentation and validation framework for WebSocket APIs.
+**Swagger-style documentation and a live playground for Socket.IO APIs.**
 
-SocketDocs allows you to define a single source of truth for your WebSocket events and use it to validate payloads, generate documentation, and create client SDKs.
+Mount one line on your Express server and get an interactive docs page at `/socket-docs`: every event listed, schemas and examples shown, and a **Try it out** button that connects to your real server and emits events.
 
-## Features
+```ts
+SocketDocs.setup(app, io, { title: 'Chat API', version: '1.0.0' });
+```
 
-- **Contract-First Design**: Define your API once, use it everywhere
-- **Framework Agnostic**: Adapters for Socket.IO, standard WebSockets, Fastify, and NestJS
-- **Unified Validation**: Built-in support for Zod and JSON Schema (AJV)
-- **Interactive Documentation**: Swagger-like UI with a built-in playground to test events
-- **Auto-Mountable Docs**: Mount documentation directly on your API server (e.g., `/docs`)
-- **Plugin System**: Extensible hooks for events, responses, and errors (logging, analytics, monitoring)
-- **SDK Generation**: Generate typed clients for TypeScript, Go, Python, and PHP
-- **Robust Build System**: Built with TypeScript Project References for reliable monorepo development
-- **Enhanced DX**: Automatic port detection, better error schema mapping, and seamless TypeScript contract loading
-- **Mock Server**: Generate realistic mock WebSocket servers with fake data for testing
-- **Deep Contract Validation**: Comprehensive validation of your API contracts
-- **AsyncAPI 3.0 Support**: Export your contracts to AsyncAPI 3.0 specification
-- **Enhanced Linting**: Catch common issues early with improved linting rules
+> **Status:** Express and NestJS are supported (Socket.IO v4 only).
+
+---
+
+## Why SocketDocs?
+
+REST has Swagger. WebSockets have had nothing comparable. Socket.IO handlers are registered at runtime inside a `connection` callback, so there is no route table to read. SocketDocs fills that gap in two ways:
+
+1. **Auto-discovery:** it watches `socket.on(...)` calls and lists every event it sees, with zero configuration.
+2. **Code-first descriptions:** you describe an event next to its handler (`docs.event(...)`) to add summaries, schemas, examples and errors. Docs and code live in the same place, so they cannot drift apart.
+
+You can start with the first and add the second one event at a time, the same way you grow a Swagger doc.
+
+---
 
 ## Installation
 
 ```bash
-npm install @socketdocs/core
+npm install @socketdocs/express
 ```
 
-## Quick Start
+`zod` is optional. Install it only if you want to describe payloads with Zod schemas. Plain JSON Schema works without it.
 
-### 1. Define your Contract
+**Requirements:** Node.js 18+, Express 4 or 5, Socket.IO 4.
 
-Create a `socketdocs.contract.ts` file:
+---
 
-```typescript
-import { createContract } from "@socketdocs/core";
-import { z } from "zod";
+## Quick start (Express)
 
-export const contract = createContract({
-  name: "Chat API",
-  version: "1.0.0",
-  description: "A realtime chat API",
-  security: [
-    {
-      name: "API Key",
-      type: "apiKey",
-      in: "header",
-      description: "API key for authentication"
-    }
-  ]
+```ts
+import express from 'express';
+import http from 'node:http';
+import { Server } from 'socket.io';
+import { SocketDocs } from '@socketdocs/express';
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// 1. Mount the docs
+const docs = SocketDocs.setup(app, io, {
+  title: 'Chat API',
+  version: '1.0.0',
+  description: 'Realtime chat API',
 });
 
-const chat = contract.namespace("chat");
+// 2. Your normal Socket.IO code, unchanged
+io.on('connection', (socket) => {
+  socket.on('send_message', (payload, ack) => {
+    ack?.({ ok: true });
+  });
+});
 
-chat.event({
-  name: "send_message",
-  direction: "client_to_server",
-  summary: "Send a message to a room",
-  payload: z.object({
-    text: z.string(),
-    roomId: z.string()
-  })
-}).errors([
-  { code: "INVALID_ROOM", description: "Room does not exist" },
-  { code: "EMPTY_MESSAGE", description: "Message cannot be empty" }
-]);
+server.listen(3000, () =>
+  console.log('Docs: http://localhost:3000/socket-docs'),
+);
+```
 
-chat.event({
-  name: "new_message",
-  direction: "server_to_client",
-  summary: "New message received in a room",
+Open `http://localhost:3000/socket-docs`. Once a client connects, `send_message` appears in the list automatically.
+
+---
+
+## Describing events
+
+Auto-discovery only knows an event's **name**. To add detail, declare it:
+
+```ts
+import { z } from 'zod';
+
+docs.event('send_message', {
+  summary: 'Send a message to a room',
+  description: 'Broadcasts the message to everyone in the room.',
+  tags: ['messaging'],
   payload: z.object({
-    id: z.string(),
-    text: z.string(),
+    text: z.string().min(1).max(500),
     roomId: z.string(),
-    sender: z.string()
   }),
-  examples: [
-    { id: "1", text: "Hello!", roomId: "general", sender: "user1" }
-  ]
+  response: z.object({ ok: z.boolean() }), // the ack
+  errors: [{ code: 'INVALID_ROOM', description: 'Room does not exist' }],
+  examples: [{ text: 'Hello!', roomId: 'general' }],
 });
 ```
 
-### 2. Bind to your Server (Socket.IO example)
+`payload` and `response` accept either a **Zod schema** or a **raw JSON Schema** object.
 
-```typescript
-import { Server } from "socket.io";
-import { bindSocketioAdapter } from "@socketdocs/socket-io";
-import { contract } from "./socketdocs.contract";
+### Server-to-client events
 
-const io = new Server(3000);
+Document events your server emits so clients know what to listen for:
 
-const handlers = {
-  chat: {
-    send_message: async ({ payload, socket, auth }) => {
-      console.log("Received:", payload.text);
-      // Broadcast to others
-      socket.to(payload.roomId).emit("new_message", {
-        id: Date.now().toString(),
-        text: payload.text,
-        roomId: payload.roomId,
-        sender: auth?.userId || "anonymous"
-      });
-    }
-  }
-};
-
-bindSocketioAdapter(io, contract, handlers, {
-  onAuth: async (socket) => {
-    const apiKey = socket.handshake.headers["x-api-key"] as string;
-    if (apiKey) {
-      return { userId: "user1", roles: ["user"] };
-    }
-    return null;
-  }
+```ts
+docs.event('new_message', {
+  direction: 'server_to_client',
+  summary: 'A new message arrived in a room',
+  payload: z.object({ id: z.string(), text: z.string(), sender: z.string() }),
 });
 ```
 
-### 3. Generate Documentation
+### Namespaces
 
-Use the CLI to generate a spec and serve the UI:
-
-```bash
-# Initialize config
-npx socketdocs init
-
-# Generate JSON spec
-npx socketdocs generate-spec
-
-# Serve documentation UI
-npx socketdocs serve-docs -p 4000
-
-# Validate your contract
-npx socketdocs validate-contract
-
-# Lint your contract
-npx socketdocs lint
-
-# Start a mock server for testing
-npx socketdocs mock-server -p 5000
-
-# Export as AsyncAPI specification
-npx socketdocs export-asyncapi -o asyncapi.json
+```ts
+docs.namespace('/chat').event('join_room', {
+  summary: 'Join a chat room',
+  payload: z.object({ roomId: z.string() }),
+});
 ```
 
-## Testing
+Events without a namespace belong to the default namespace `/`.
 
-To run the framework tests:
+### Event options
+
+| Option         | Type                                                          | Description                                         |
+| -------------- | ------------------------------------------------------------- | --------------------------------------------------- |
+| `direction`    | `'client_to_server' \| 'server_to_client' \| 'bidirectional'` | Defaults to `client_to_server`                      |
+| `summary`      | `string`                                                      | One-line description shown on the card              |
+| `description`  | `string`                                                      | Longer explanation                                  |
+| `tags`         | `string[]`                                                    | Used for search and grouping                        |
+| `payload`      | Zod or JSON Schema                                            | Shape of the data sent with the event               |
+| `response`     | Zod or JSON Schema                                            | Shape of the acknowledgement                        |
+| `errors`       | `{ code, description }[]`                                     | Possible error responses                            |
+| `examples`     | `unknown[]`                                                   | Example payloads; the first one prefills Try it out |
+| `authRequired` | `boolean`                                                     | Shows an AUTH badge                                 |
+| `deprecated`   | `boolean`                                                     | Shows the event struck through                      |
+
+---
+
+## Configuration
+
+```ts
+SocketDocs.setup(app, io, {
+  path: '/socket-docs', // where the docs are mounted
+  title: 'Chat API',
+  version: '1.0.0',
+  description: '...',
+  socketPath: '/socket.io', // your Socket.IO "path" option
+  security: [{ name: 'token', type: 'apiKey', in: 'auth' }],
+  auth: { username: 'admin', password: 'secret' }, // or an Express middleware
+  enabled: process.env.NODE_ENV !== 'production',
+});
+```
+
+| Option                              | Default        | Description                                                       |
+| ----------------------------------- | -------------- | ----------------------------------------------------------------- |
+| `path`                              | `/socket-docs` | Mount path for the docs UI                                        |
+| `title` / `version` / `description` |                | Shown in the page header                                          |
+| `socketPath`                        | `/socket.io`   | The path your Socket.IO server listens on                         |
+| `security`                          | `[]`           | Credentials the **Authorize** dialog should offer                 |
+| `auth`                              | none           | Protects the docs page itself (HTTP Basic or your own middleware) |
+| `enabled`                           | `true`         | Set `false` to mount nothing                                      |
+
+The raw spec is available at `/<path>/spec.json` if you want to inspect it or build on it.
+
+---
+
+## The playground
+
+Every event card has a **Try it out** button.
+
+- **Connection bar:** the server URL is inferred from the page address, so there is nothing to configure. Pick a namespace and click **Connect**.
+- **Authorize:** supply a Bearer token, API key or custom query parameter. Values are sent in the Socket.IO handshake `auth` payload (or query string).
+- **Try it out:** edit the payload (prefilled from your first example), click **Execute**, and see the acknowledgement and timing.
+- **Listen:** subscribe to server-to-client events and watch them arrive.
+- **Live event log:** every sent and received event, filterable, with timestamps.
+- Light and dark themes.
+
+> Browsers cannot set custom HTTP headers on WebSocket connections, so credentials travel in Socket.IO's `auth` object or query string, not in headers. Read them on the server with `socket.handshake.auth` or `socket.handshake.query`.
+
+---
+
+## How discovery works (and its limits)
+
+SocketDocs wraps `socket.on` and records each event name as your handlers register. Because Socket.IO registers handlers when a client connects:
+
+- Discovered events appear **after the first client connects**.
+- Discovered events have a **name only**. Add `docs.event(...)` for schemas, descriptions and examples.
+- A declared event always overrides its discovered version.
+- Socket.IO's reserved events (`connect`, `disconnect`, `connect_error`, and so on) are never listed.
+- Events your server **emits** cannot be discovered. Declare them with `direction: 'server_to_client'`.
+
+Declared events appear immediately, even before anyone connects.
+
+---
+
+## NestJS
+
+The API mirrors `SwaggerModule`:
+
+```ts
+SocketDocsModule.setup('/socket-docs', app, {
+  title: 'Chat API',
+  version: '1.0.0',
+});
+```
+
+It will read your existing `@WebSocketGateway` and `@SubscribeMessage` handlers with no changes, with an optional `@SocketEvent({...})` decorator for extra detail.
+
+---
+
+## Security
+
+The docs page lists your API's events and lets visitors send real messages to your server. **Do not expose it publicly by accident.**
+
+- Disable it in production: `enabled: process.env.NODE_ENV !== 'production'`.
+- Or protect it: `auth: { username, password }`, or pass your own middleware.
+- Never put real secrets in `examples`. They are served to anyone who can open the page.
+
+---
+
+## Command line
 
 ```bash
-# Install dependencies
+# Download the spec from a running server
+curl http://localhost:3000/socket-docs/spec.json -o spec.json
+
+# Lint the spec
+npx socketdocs lint --file spec.json
+
+# Export as AsyncAPI 3.0
+npx socketdocs export-asyncapi --file spec.json -o asyncapi.json
+```
+
+---
+
+## Packages
+
+| Package               | Purpose                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| `@socketdocs/core`    | Spec model, schema normalization (Zod / JSON Schema), event registry, linting, AsyncAPI export |
+| `@socketdocs/express` | Express mount, Socket.IO discovery, bundled docs UI                                            |
+| `@socketdocs/nestjs`  | NestJS module and decorators                                                                   |
+| `@socketdocs/cli`     | Spec lint and AsyncAPI 3.0 export                                                              |
+
+---
+
+## Local development
+
+```bash
+git clone https://github.com/saminwankwo/socket-doc.git
+cd socket-doc
 npm install
-
-# Build all packages
 npm run build
-
-# Run tests
 npm test
 ```
 
-## Documentation UI
-
-The documentation server provides a modern web interface to explore your API:
-- **Explorer**: View all namespaces and events with their schemas
-- **Playground**: Connect to your running server and test events interactively
-
-## Contract Linting
-
-Lint your contract to catch common issues early:
+Try your local build in another project without publishing to npm:
 
 ```bash
-npx socketdocs lint
+# in socketdocs
+mkdir -p /tmp/sd && npm pack -w packages/core -w packages/express --pack-destination /tmp/sd
+
+# in your project
+npm install /tmp/sd/socketdocs-core-*.tgz /tmp/sd/socketdocs-express-*.tgz
 ```
 
-Linting checks for:
-- Missing documentation
-- Invalid naming conventions
-- Missing payload schemas
-- Missing response schemas for request-response events
-- Duplicate event names
-- Duplicate error codes
-- Missing security requirements when auth is required
+Prefer tarballs (or [`yalc`](https://github.com/wclr/yalc)) over `npm link`. A symlinked package can resolve its own copy of `socket.io`, and discovery then patches the wrong one. Run `npm ls socket.io` in your project and confirm there is exactly one copy.
 
-## AsyncAPI Export
-
-Export your contract to AsyncAPI 3.0 specification:
-
-```bash
-npx socketdocs export-asyncapi -o asyncapi.json
-```
-
-This exports:
-- All your namespaces and events
-- Server information
-- Security requirements
-- Examples
-- Operations for both sending and receiving messages
-
-## SDK Generation
-
-Generate client SDKs with a single command:
-
-```bash
-# TypeScript
-npx socketdocs generate-sdk --lang ts -o ./sdk/client.ts
-
-# Go
-npx socketdocs generate-sdk --lang go -o ./sdk/client.go
-
-# Python
-npx socketdocs generate-sdk --lang py -o ./sdk/client.py
-
-# PHP
-npx socketdocs generate-sdk --lang php -o ./sdk/client.php
-```
+---
 
 ## Contributing
 
-We love contributions! Whether it's adding a new adapter, improving the UI, or adding support for more SDK languages, your help is welcome.
-
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed instructions on how to get involved.
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the package layout and how to run the pack test.
 
 ## License
 

@@ -1,63 +1,96 @@
 # @socketdocs/nestjs
 
-The **NestJS** adapter for **SocketDocs**. Bring typed, validated, and documented WebSockets to your NestJS applications.
+Swagger-style, self-hosted documentation for NestJS WebSocket (Socket.IO) apps. Reads your existing `@WebSocketGateway` / `@SubscribeMessage` metadata at startup and mounts the SocketDocs UI plus `spec.json` — mirroring `SwaggerModule.setup(...)`.
 
-## 📦 Installation
+See the [repository README](../../README.md) for the full guide, or run [`examples/nest-chat`](../../examples/nest-chat) for a working demo.
+
+## Install
 
 ```bash
-npm install @socketdocs/nestjs @socketdocs/core @nestjs/websockets @nestjs/platform-socket.io zod
+npm install @socketdocs/nestjs @nestjs/core @nestjs/websockets @nestjs/platform-socket.io socket.io zod
 ```
 
-## 🚀 Getting Started
+Peers: `@nestjs/common`, `@nestjs/core`, `@nestjs/websockets` (v10–v12), `reflect-metadata`, `express`, `socket.io` (v4). Socket.IO is used when you set `app.useWebSocketAdapter(new IoAdapter(app))`.
 
-1.  **Define your contract**:
+## Usage
 
-```typescript
-import { createContract } from '@socketdocs/core';
-import { z } from 'zod';
-
-export const contract = createContract({ name: 'NestJS API', version: '0.2.0' });
-contract.namespace('default').event({
-  name: 'message',
-  direction: 'client_to_server',
-  payload: z.object({ text: z.string() })
-});
-```
-
-2.  **Attach the adapter in your main file**:
-
-```typescript
+```ts
 import { NestFactory } from '@nestjs/core';
-import { bindNestjsAdapter } from '@socketdocs/nestjs';
-import { contract } from './contract';
-import { AppModule } from './app.module';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { SocketDocsModule } from '@socketdocs/nestjs';
+import { AppModule } from './app.module.js';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+const app = await NestFactory.create(AppModule);
+app.useWebSocketAdapter(new IoAdapter(app)); // lets SocketDocs sniff server -> client events
 
-  // Handlers for the events defined in the contract
-  const handlers = {
-    'default': {
-      'message': async ({ payload, client }: any) => {
-        console.log(`NestJS received: ${payload.text}`);
-      }
-    }
-  };
+SocketDocsModule.setup('/socket-docs', app, {
+  title: 'Chat API',
+  version: '1.0.0',
+  description: 'Realtime chat',
+  security: [{ name: 'token', type: 'apiKey', in: 'auth' }],
+  // auth: { username: "admin", password: "secret" },  // protects the docs page
+});
 
-  bindNestjsAdapter(app, contract, handlers);
-
-  await app.listen(3000);
-}
-bootstrap();
+await app.listen(3000); // docs at http://localhost:3000/socket-docs
 ```
 
-## 🛠️ Features
+Because discovery reads decorator metadata, **client → server events appear before any client connects** (unlike the Express sniffing path).
 
-- **NestJS Architecture Support**: Integrates with NestJS's dependency injection and gateway system.
-- **Validation**: Automatic validation of incoming payloads using Zod before they reach your logic.
-- **Unified Handlers**: Use the `handlers` map to keep your WebSocket logic clean and documented.
-- **Dependency Injection**: Seamlessly work alongside your existing NestJS providers and services.
+## `SocketDocsModule.setup(path, app, config)`
 
-## ⚖️ License
+`config` mirrors the Express options: `title`, `version`, `description`, `servers`, `security`, `socketPath`, `auth` (Basic credentials or an Express middleware) and `sniff`. The returned instance supports:
 
-MIT
+- `event(name, def, { namespace })` — declare/enrich an event imperatively.
+- `namespace(name, description?)`, `spec()`, `registry`.
+
+The Express HTTP adapter is required (`NestExpressApplication`); Fastify throws a clear error. The shared router/UI implementation lives in `@socketdocs/express`, so routes, auth and static serving behave exactly like the Express package.
+
+## Enriching handlers with `@SocketEvent`
+
+```ts
+import { MessageBody, SubscribeMessage } from "@nestjs/websockets";
+import { SocketEvent } from "@socketdocs/nestjs";
+import { z } from "zod";
+
+@SubscribeMessage("send_message")
+@SocketEvent({
+  summary: "Send a message to a room",
+  description: "Broadcasts the message to everyone in the room.",
+  payload: z.object({ text: z.string(), roomId: z.string() }),   // Zod or JSON Schema
+  response: z.object({ ok: z.boolean() }),
+  errors: [{ code: "INVALID_ROOM", description: "Room does not exist" }],
+  tags: ["chat"],
+  kind: "request_response",
+  authRequired: true,
+})
+handleMessage(@MessageBody() data: unknown) {
+  return { ok: true };
+}
+```
+
+- Handlers without `@SocketEvent` are still discovered (name + `client_to_server` direction) and marked `source: "decorator"`; handlers with it are marked `source: "declared"`.
+- `kind` is **never guessed** — set it explicitly when the handler acknowledges the client.
+- The namespace comes from the gateway options (`@WebSocketGateway({ namespace: "/chat" })`), defaulting to `/`.
+
+## Server → client events
+
+Sniffing server → client events needs access to the gateway's Socket.IO server, which Nest exposes through `@WebSocketServer()`:
+
+```ts
+@WebSocketServer()
+server!: Server;
+
+handleConnection(client: Socket) {
+  client.emit("welcome", { ok: true }); // shows up as server_to_client in the docs
+}
+```
+
+Without it, only decorator-discovered client → server events are automatic; declare pushes yourself:
+
+```ts
+@SocketEvent({ direction: "server_to_client", summary: "Welcome message" })
+```
+
+## License
+
+MIT © Nwankwo Samuel
