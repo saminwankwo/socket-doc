@@ -34,13 +34,13 @@ export const EventCard: React.FC<EventCardProps> = ({
       }`}
     >
       <div
-        className={`p-5 flex items-center justify-between border-b cursor-pointer select-none transition-colors ${
+        className={`flex flex-wrap items-start justify-between gap-2 border-b p-5 cursor-pointer select-none transition-colors ${
           theme === 'dark' ? 'border-slate-800 hover:bg-slate-800/40' : 'border-slate-100 hover:bg-slate-50'
         }`}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <div className="min-w-0 flex-1 basis-60">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <span
               className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
                 event.direction === 'client_to_server'
@@ -87,10 +87,10 @@ export const EventCard: React.FC<EventCardProps> = ({
             )}
           </div>
 
-          <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{name}</h3>
+          <h3 className={`truncate text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{name}</h3>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {canListen && onToggleListen && (
             <button
               type="button"
@@ -99,7 +99,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                 onToggleListen(!isListening);
               }}
               title={isListening ? 'Stop listening for this event' : 'Listen for server emissions'}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
+              className={`flex min-h-10 items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-medium transition-colors ${
                 isListening
                   ? 'bg-purple-600/20 text-purple-300 border-purple-500/40 animate-pulse'
                   : theme === 'dark'
@@ -119,7 +119,7 @@ export const EventCard: React.FC<EventCardProps> = ({
               setShowTryIt(!showTryIt);
               if (!isExpanded) setIsExpanded(true);
             }}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-colors ${
+            className={`min-h-10 basis-full rounded-lg border px-3 py-1 text-xs font-semibold transition-colors sm:basis-auto ${
               showTryIt
                 ? 'bg-blue-600/10 border-blue-500/40 text-blue-400'
                 : theme === 'dark'
@@ -138,7 +138,7 @@ export const EventCard: React.FC<EventCardProps> = ({
 
       {isExpanded && (
         <div className="p-6 space-y-6">
-          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+          <p className={`break-words text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
             {event.summary || event.description || 'No description available.'}
           </p>
 
@@ -163,7 +163,7 @@ export const EventCard: React.FC<EventCardProps> = ({
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <SchemaView title="Payload Schema" schema={event.payloadSchema} theme={theme} accent="blue" />
             <SchemaView title="Response Schema (Ack)" schema={event.responseSchema} theme={theme} accent="purple" />
           </div>

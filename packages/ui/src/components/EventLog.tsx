@@ -6,9 +6,11 @@ interface EventLogProps {
   logs: LogEntry[];
   onClear: () => void;
   theme: 'dark' | 'light';
+  /** Override the panel height (e.g. `h-80 xl:h-[520px]` in the playground). */
+  className?: string;
 }
 
-export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme }) => {
+export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme, className }) => {
   const [filterEvent, setFilterEvent] = useState<string>('');
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
   const [expandedLogIds, setExpandedLogIds] = useState<Record<string, boolean>>({});
@@ -23,7 +25,8 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme }) => {
   });
 
   useEffect(() => {
-    if (autoScroll) {
+    // Only follow new entries — never jump the page on mount with an empty log
+    if (autoScroll && logs.length > 0) {
       logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [logs, autoScroll]);
@@ -34,7 +37,9 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme }) => {
 
   return (
     <div
-      className={`border rounded-xl flex flex-col h-[520px] transition-colors ${
+      className={`${
+        className ?? 'h-[520px]'
+      } flex flex-col rounded-xl border transition-colors ${
         theme === 'dark' ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
       }`}
     >
@@ -49,15 +54,15 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, theme }) => {
           <span className="text-xs font-mono text-slate-500">({filteredLogs.length})</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-0 basis-full sm:basis-auto sm:flex-1">
             <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
               placeholder="Filter by event..."
               value={filterEvent}
               onChange={(e) => setFilterEvent(e.target.value)}
-              className={`pl-7 pr-2 py-1 text-xs border rounded-lg focus:outline-none focus:border-blue-500 ${
+              className={`w-full min-w-0 rounded-lg border py-1 pl-7 pr-2 text-base focus:border-blue-500 focus:outline-none sm:text-xs ${
                 theme === 'dark' ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
               }`}
             />

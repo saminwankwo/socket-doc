@@ -110,7 +110,7 @@ export const TryItOut: React.FC<TryItOutProps> = ({
               if (jsonError) setJsonError(null);
             }}
             rows={4}
-            className={`w-full p-3 font-mono text-xs rounded-lg border transition-colors focus:outline-none focus:border-blue-500 ${
+            className={`w-full rounded-lg border p-3 font-mono text-base transition-colors focus:border-blue-500 focus:outline-none sm:text-xs ${
               theme === 'dark'
                 ? 'bg-slate-950/70 border-slate-800 text-slate-200'
                 : 'bg-slate-50 border-slate-200 text-slate-800'
@@ -138,7 +138,7 @@ export const TryItOut: React.FC<TryItOutProps> = ({
               <span>Acknowledgment Response</span>
             </div>
             <pre
-              className={`p-3 rounded-lg font-mono text-xs overflow-x-auto border ${
+              className={`max-h-80 overflow-y-auto overflow-x-auto rounded-lg border p-3 font-mono text-xs ${
                 theme === 'dark'
                   ? 'bg-slate-950 border-slate-800 text-green-400'
                   : 'bg-green-50/50 border-green-200 text-green-700'

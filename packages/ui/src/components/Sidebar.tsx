@@ -11,6 +11,7 @@ interface SidebarProps {
   activeTab: 'docs' | 'playground';
   setActiveTab: (tab: 'docs' | 'playground') => void;
   theme: 'dark' | 'light';
+  isOpen: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -23,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   theme,
+  isOpen,
 }) => {
   const filteredNamespaces = Object.keys(namespaces).filter((ns) => {
     if (!searchQuery) return true;
@@ -42,8 +44,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`w-64 border-r transition-colors duration-300 ${
-        theme === 'dark' ? 'border-slate-800 bg-slate-900/50' : 'border-slate-200 bg-white'
+      className={`${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      } fixed inset-y-0 left-0 z-40 w-72 border-r transition-transform duration-200 lg:static lg:z-auto lg:w-64 lg:translate-x-0 ${
+        theme === 'dark'
+          ? 'border-slate-800 bg-slate-900/95 lg:bg-slate-900/50'
+          : 'border-slate-200 bg-white lg:bg-white/90'
       } backdrop-blur-xl flex flex-col`}
     >
       <div className="p-6 flex-1 flex flex-col">
@@ -98,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search events, tags..."
-            className={`w-full border rounded-lg pl-9 pr-3 py-2 text-xs transition-colors focus:outline-none focus:border-blue-500 ${
+            className={`w-full border rounded-lg pl-9 pr-3 py-2 text-base sm:text-xs transition-colors focus:outline-none focus:border-blue-500 ${
               theme === 'dark'
                 ? 'bg-slate-950/50 border-slate-800 text-slate-300'
                 : 'bg-slate-100 border-slate-200 text-slate-700'

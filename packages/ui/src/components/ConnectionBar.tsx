@@ -32,20 +32,20 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
         theme === 'dark' ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
       }`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3 flex-1 min-w-[300px]">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 w-full items-center gap-2 sm:w-auto sm:flex-1">
+          <div className="hidden items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:flex">
             <Globe size={14} className="text-blue-400" />
             <span>Server</span>
           </div>
 
-          <div className="flex-1 flex gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
             <input
               type="text"
               value={socketUrl}
               onChange={(e) => setSocketUrl(e.target.value)}
               placeholder="http://localhost:3000"
-              className={`flex-1 border rounded-lg px-3 py-1.5 text-xs font-mono transition-colors focus:outline-none focus:border-blue-500 ${
+              className={`min-w-0 basis-full rounded-lg border px-3 py-1.5 font-mono text-base transition-colors focus:border-blue-500 focus:outline-none sm:basis-64 sm:flex-1 sm:text-xs ${
                 theme === 'dark'
                   ? 'bg-slate-950/60 border-slate-800 text-slate-200'
                   : 'bg-slate-50 border-slate-200 text-slate-800'
@@ -57,7 +57,7 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                 onChange={(e) => {
                   if (e.target.value) setSocketUrl(e.target.value);
                 }}
-                className={`border rounded-lg px-2 py-1.5 text-xs focus:outline-none ${
+                className={`min-w-0 basis-full flex-1 rounded-lg border px-2 py-1.5 text-base focus:outline-none sm:basis-auto sm:flex-none sm:text-xs ${
                   theme === 'dark'
                     ? 'bg-slate-950 border-slate-800 text-slate-300'
                     : 'bg-slate-50 border-slate-200 text-slate-700'
@@ -74,14 +74,14 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 sm:flex-none">
           {namespaces.length > 1 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">Namespace:</span>
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+              <span className="hidden text-xs font-medium text-slate-400 sm:inline">Namespace:</span>
               <select
                 value={selectedNamespace}
                 onChange={(e) => setSelectedNamespace(e.target.value)}
-                className={`border rounded-lg px-3 py-1.5 text-xs focus:outline-none ${
+                className={`min-w-0 flex-1 rounded-lg border px-3 py-1.5 text-base focus:outline-none sm:flex-none sm:text-xs ${
                   theme === 'dark'
                     ? 'bg-slate-950 border-slate-800 text-slate-300'
                     : 'bg-slate-50 border-slate-200 text-slate-700'
@@ -96,14 +96,14 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
             </div>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
             {isConnected ? (
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-lg">
+              <span className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-400">
                 <CheckCircle2 size={13} />
                 Connected
               </span>
             ) : (
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-slate-500/10 px-2.5 py-1 rounded-lg">
+              <span className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-slate-500/10 px-2.5 py-1 text-xs font-semibold text-slate-400">
                 <XCircle size={13} />
                 Disconnected
               </span>
@@ -112,7 +112,7 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
             {isConnected ? (
               <button
                 onClick={onDisconnect}
-                className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                className="flex min-h-10 basis-full items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20 sm:basis-auto sm:flex-none"
               >
                 <PowerOff size={13} />
                 Disconnect
@@ -120,7 +120,7 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
             ) : (
               <button
                 onClick={onConnect}
-                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                className="flex min-h-10 basis-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-500 sm:basis-auto sm:flex-none"
               >
                 <Power size={13} />
                 Connect

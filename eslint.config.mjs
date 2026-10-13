@@ -13,6 +13,8 @@ export default [
         ...globals.browser,
         ...globals.jest,
         ...globals.es2021,
+        // Injected at build time by packages/ui/vite.config.ts (footer version)
+        __SOCKETDOCS_VERSION__: 'readonly',
       },
     },
     plugins: {
